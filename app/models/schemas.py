@@ -4,7 +4,7 @@ Pydantic models for request/response validation.
 """
 
 from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional, List
+from typing import Optional, List, Dict
 from enum import Enum
 from datetime import datetime
 
