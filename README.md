@@ -41,9 +41,7 @@ If you are new to the application, here is how you use the Studio:
 
 Don't want to install anything? Use the live hosted version of the app here:
 
-👉 **[Click Here to Use Page2PDF Studio](https://your-hosted-render-link-goes-here.com)**
-
-*(Replace the link above with your live Render URL once you deploy it)*
+👉 **[Click Here to Use Page2PDF Studio](https://page2pdf.onrender.com)**
 
 ---
 
