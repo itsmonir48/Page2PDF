@@ -17,6 +17,7 @@ lxml_html_clean
 
 # PDF Generation
 weasyprint>=62.0
+PyMuPDF>=1.24.0
 
 # Syntax Highlighting
 Pygments>=2.18.0
