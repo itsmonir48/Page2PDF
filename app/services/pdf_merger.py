@@ -306,9 +306,7 @@ def insert_file_into_pdf(base_filename: str, insert_path: Path, position: str, p
         
         # Handle images
         if insert_path.suffix.lower() in ['.png', '.jpg', '.jpeg', '.webp']:
-            insert_doc = fitz.open()
             img = fitz.open(insert_path)
-            rect = img[0].rect
             pdfbytes = img.convert_to_pdf()
             img.close()
             insert_doc = fitz.open("pdf", pdfbytes)

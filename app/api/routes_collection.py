@@ -427,7 +427,7 @@ async def get_thumbnail(collection_id: str, page_index: int, zoom: float = 0.5):
 
 
 @router.get("/{collection_id}/download")
-async def download_merged_pdf(collection_id: str):
+async def download_merged_pdf(collection_id: str, custom_filename: Optional[str] = None):
     """Download the final (or edited) merged PDF."""
     if collection_id not in collections:
         raise HTTPException(status_code=404, detail="Collection not found")
@@ -443,7 +443,10 @@ async def download_merged_pdf(collection_id: str):
     if not filepath.exists():
         raise HTTPException(status_code=404, detail="PDF file has expired or was deleted")
 
-    safe_name = sanitize_filename(col.title) + ".pdf"
+    if custom_filename and custom_filename.strip():
+        safe_name = sanitize_filename(custom_filename.strip()) + ".pdf"
+    else:
+        safe_name = sanitize_filename(col.title) + ".pdf"
     return FileResponse(
         path=str(filepath),
         filename=safe_name,

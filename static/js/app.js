@@ -48,6 +48,7 @@
     const pmRemoved = document.getElementById('pm-removed');
     const pmThumbnailsGrid = document.getElementById('pm-thumbnails-grid');
     const pmBtnRemoveLast = document.getElementById('pm-btn-remove-last');
+    const pmBtnSelectAll = document.getElementById('pm-btn-select-all');
     const pmBtnRemoveSelected = document.getElementById('pm-btn-remove-selected');
     const pmBtnKeepSelected = document.getElementById('pm-btn-keep-selected');
     const pmBtnRestoreAll = document.getElementById('pm-btn-restore-all');
@@ -218,6 +219,29 @@
                 updatePmUI();
             }
         }
+    });
+    
+    pmBtnSelectAll.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log("Select All clicked. totalPagesCount:", totalPagesCount);
+        
+        let allSelected = true;
+        for(let i = 0; i < totalPagesCount; i++) {
+            if (pageStates[i] && !pageSelections[i]) {
+                allSelected = false;
+                break;
+            }
+        }
+        
+        console.log("Currently allSelected?", allSelected);
+        
+        for(let i = 0; i < totalPagesCount; i++) {
+            if (pageStates[i]) {
+                pageSelections[i] = !allSelected;
+            }
+        }
+        
+        updatePmUI();
     });
     
     pmBtnRemoveSelected.addEventListener('click', () => {
@@ -791,11 +815,75 @@
         progressPercent.textContent = '100%';
 
         // Setup Download Section
-        dlSources.textContent = `${collection.items.filter(i => i.status === 'completed').length} Sources`;
-        dlPages.textContent = `${collection.total_pages} Pages`;
+        const completedCount = collection.items.filter(i => i.status === 'completed').length;
+        dlSources.textContent = completedCount;
+        dlPages.textContent = collection.total_pages;
         dlSize.textContent = `${collection.final_pdf_size_mb.toFixed(1)} MB`;
         downloadFilename.textContent = collection.final_pdf_filename;
-        downloadBtn.href = `/api/collections/${collection.id}/download`;
+        
+        // Set custom filename input with collection title
+        const filenameInput = document.getElementById('custom-filename-input');
+        if (filenameInput) {
+            filenameInput.value = collection.title || 'Study_Material_Collection';
+        }
+        
+        // Update download link with custom filename support
+        const baseDownloadUrl = `/api/collections/${collection.id}/download`;
+        downloadBtn.href = baseDownloadUrl;
+        
+        // Update href dynamically when user types a filename
+        if (filenameInput) {
+            filenameInput.addEventListener('input', () => {
+                const customName = filenameInput.value.trim();
+                if (customName) {
+                    downloadBtn.href = `${baseDownloadUrl}?custom_filename=${encodeURIComponent(customName)}`;
+                } else {
+                    downloadBtn.href = baseDownloadUrl;
+                }
+            });
+            // Trigger once to set initial value
+            const initialName = filenameInput.value.trim();
+            if (initialName) {
+                downloadBtn.href = `${baseDownloadUrl}?custom_filename=${encodeURIComponent(initialName)}`;
+            }
+        }
+        
+        // Handle Save As button using File System Access API
+        const saveAsBtn = document.getElementById('save-as-btn');
+        if (saveAsBtn) {
+            // Hide button if API is not supported by the browser
+            if (!window.showSaveFilePicker) {
+                saveAsBtn.style.display = 'none';
+            } else {
+                saveAsBtn.onclick = async () => {
+                    try {
+                        const defaultName = (filenameInput && filenameInput.value.trim()) ? 
+                            filenameInput.value.trim() + '.pdf' : 
+                            (collection.title || 'Page2PDF_Document') + '.pdf';
+                            
+                        const fileHandle = await window.showSaveFilePicker({
+                            suggestedName: defaultName,
+                            types: [{
+                                description: 'PDF Document',
+                                accept: { 'application/pdf': ['.pdf'] }
+                            }]
+                        });
+                        
+                        // Fetch the file as blob and write it
+                        const response = await fetch(downloadBtn.href);
+                        if (!response.ok) throw new Error("Failed to fetch PDF");
+                        const blob = await response.blob();
+                        
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                    } catch (err) {
+                        // User cancelled or error occurred
+                        console.log("Save As aborted or failed", err);
+                    }
+                };
+            }
+        }
         
         // Individual Downloads
         individualDownloadsList.innerHTML = '';
