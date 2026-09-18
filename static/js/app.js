@@ -136,6 +136,7 @@
     urlInput.addEventListener('input', clearError);
     addUrlBtn.addEventListener('click', addUrlToCollection);
     generateAllBtn.addEventListener('click', startGeneration);
+    uploadDropZone.addEventListener('click', () => pdfUploadInput.click());
     
     const supportedFilePattern = /\.(pdf|png|jpe?g|webp)$/i;
 
@@ -170,7 +171,11 @@
     });
 
     async function uploadFilesToCollection(files) {
-        const invalidFile = files.find(file => !supportedFilePattern.test(file.name));
+        const invalidFile = files.find(file => {
+            const validExtension = supportedFilePattern.test(file.name);
+            const validType = file.type === 'application/pdf' || file.type.startsWith('image/');
+            return !validExtension || !validType;
+        });
         if (invalidFile) {
             showError('Only PDF, PNG, JPG, JPEG, and WEBP files are supported.');
             return;

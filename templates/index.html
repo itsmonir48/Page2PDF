@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=2">
+    <link rel="stylesheet" href="/static/css/style.css?v=3">
 </head>
 <body>
     <!-- ─── Navigation ──────────────────────────────────────────── -->
@@ -95,8 +95,8 @@
                 </div>
 
                 <div class="upload-wrapper" style="display: flex; justify-content: center; margin-bottom: 16px;">
-                    <input type="file" id="pdf-upload-input" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple style="display: none;">
-                    <button class="upload-pdf-btn upload-drop-zone" id="upload-pdf-btn" type="button" onclick="document.getElementById('pdf-upload-input').click()" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 600px; padding: 14px 24px; background: rgba(168, 85, 247, 0.05); border: 1px dashed rgba(168, 85, 247, 0.4); border-radius: 12px; color: #d8b4fe; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(168, 85, 247, 0.1)'; this.style.borderColor='rgba(168, 85, 247, 0.8)'" onmouseout="this.style.background='rgba(168, 85, 247, 0.05)'; this.style.borderColor='rgba(168, 85, 247, 0.4)'">
+                    <input type="file" id="pdf-upload-input" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp" multiple style="display: none;">
+                    <button class="upload-pdf-btn upload-drop-zone" id="upload-pdf-btn" type="button" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 600px; padding: 14px 24px; background: rgba(168, 85, 247, 0.05); border: 1px dashed rgba(168, 85, 247, 0.4); border-radius: 12px; color: #d8b4fe; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(168, 85, 247, 0.1)'; this.style.borderColor='rgba(168, 85, 247, 0.8)'" onmouseout="this.style.background='rgba(168, 85, 247, 0.05)'; this.style.borderColor='rgba(168, 85, 247, 0.4)'">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="17 8 12 3 7 8"></polyline>
@@ -336,7 +336,7 @@
                     <div style="display: flex; flex-direction: column; gap: 20px;">
                         <div>
                             <label style="display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px;">1. Select File (PDF or Image)</label>
-                            <div id="insert-file-drop-zone" style="padding: 18px; border: 1px dashed var(--accent); border-radius: var(--radius-sm); text-align: center; color: var(--text-muted); cursor: pointer;">Drop a PDF or image here, or click to browse<input type="file" id="insert-file-input" accept=".pdf,.png,.jpg,.jpeg,.webp" style="display: none;"></div>
+                            <div id="insert-file-drop-zone" style="padding: 18px; border: 1px dashed var(--accent); border-radius: var(--radius-sm); text-align: center; color: var(--text-muted); cursor: pointer;">Drop a PDF or image here, or click to browse<input type="file" id="insert-file-input" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp" style="display: none;"></div>
                         </div>
 
                         <div>
@@ -625,6 +625,6 @@
         </div>
     </footer>
 
-    <script src="/static/js/app.js?v=3"></script>
+    <script src="/static/js/app.js?v=4"></script>
 </body>
 </html>
