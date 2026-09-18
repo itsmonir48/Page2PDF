@@ -587,6 +587,13 @@ a:hover { color: var(--accent-hover); }
     opacity: 0.5; border-color: var(--accent); box-shadow: var(--shadow);
 }
 
+.upload-drop-zone.drag-over,
+#insert-file-drop-zone.drag-over {
+    background: rgba(99, 102, 241, 0.16) !important;
+    border-color: var(--accent-hover) !important;
+    color: var(--text-primary) !important;
+}
+
 .url-item-drag-handle {
     color: var(--text-muted); cursor: grab; display: flex;
 }

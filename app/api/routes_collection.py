@@ -8,6 +8,7 @@ import logging
 import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import FileResponse
 
@@ -32,6 +33,7 @@ router = APIRouter()
 collections: Dict[str, Collection] = {}
 
 MAX_URLS_PER_COLLECTION = int(os.getenv("MAX_URLS_PER_COLLECTION", "20"))
+SUPPORTED_UPLOAD_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
 
 
 @router.post("", response_model=CollectionResponse)
@@ -104,7 +106,7 @@ async def upload_file_to_collection(
     collection_id: str, 
     file: UploadFile = File(...),
 ):
-    """Upload a local PDF file directly into the collection."""
+    """Upload a local PDF or image directly into the collection."""
     if collection_id not in collections:
         raise HTTPException(status_code=404, detail="Collection not found")
         
@@ -113,30 +115,42 @@ async def upload_file_to_collection(
     if len(col.items) >= MAX_URLS_PER_COLLECTION:
         return CollectionResponse(success=False, error=f"Maximum limit of {MAX_URLS_PER_COLLECTION} items reached.")
         
-    if not file.filename.lower().endswith(".pdf"):
-        return CollectionResponse(success=False, error="Only PDF files are supported.")
+    original_name = file.filename or "uploaded-file"
+    extension = Path(original_name).suffix.lower()
+    if extension not in SUPPORTED_UPLOAD_EXTENSIONS:
+        return CollectionResponse(success=False, error="Only PDF, PNG, JPG, JPEG, and WEBP files are supported.")
 
     import shutil
     
     # Generate unique filename for the uploaded file
     file_id = generate_job_id()
-    safe_filename = f"upload_{file_id}_{sanitize_filename(file.filename)}"
-    if not safe_filename.endswith(".pdf"):
-        safe_filename += ".pdf"
-        
+    safe_stem = sanitize_filename(Path(original_name).stem) or "uploaded-file"
+    source_filename = f"upload_{file_id}_{safe_stem}{extension}"
+    source_path = get_output_dir() / source_filename
+    safe_filename = f"upload_{file_id}_{safe_stem}.pdf"
     output_path = get_output_dir() / safe_filename
     
     try:
-        with open(output_path, "wb") as buffer:
+        with open(source_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        if extension != ".pdf":
+            from app.services.pdf_merger import convert_image_to_pdf
+            if not convert_image_to_pdf(source_path, output_path):
+                source_path.unlink(missing_ok=True)
+                return CollectionResponse(success=False, error="The uploaded image could not be converted to PDF.")
+            source_path.unlink(missing_ok=True)
+        else:
+            source_path.replace(output_path)
     except Exception as e:
         logger.error(f"Failed to save uploaded file: {e}")
+        source_path.unlink(missing_ok=True)
+        output_path.unlink(missing_ok=True)
         return CollectionResponse(success=False, error="Failed to save uploaded file.")
         
     new_item = CollectionItem(
         id=file_id,
         url=f"local://{safe_filename}",
-        title=file.filename,
+        title=original_name,
         status=JobStatus.COMPLETED,  # Already complete because it's an uploaded PDF
         progress=100,
         filename=safe_filename
@@ -383,13 +397,14 @@ async def apply_page_edits(collection_id: str, request: EditPagesRequest):
         raise HTTPException(status_code=404, detail="Collection not found")
         
     col = collections[collection_id]
-    if not col.final_pdf_filename:
+    current_pdf = col.edited_pdf_filename or col.final_pdf_filename
+    if not current_pdf:
          return CollectionResponse(success=False, error="Collection has not been merged yet.")
          
     from app.services.pdf_merger import edit_pdf_pages
     
     filename, total_pages, size_mb = edit_pdf_pages(
-        col.final_pdf_filename, 
+        current_pdf,
         request.keep_pages, 
         request.rotations
     )
@@ -413,17 +428,22 @@ async def get_thumbnail(collection_id: str, page_index: int, zoom: float = 0.5):
         raise HTTPException(status_code=404, detail="Collection not found")
         
     col = collections[collection_id]
-    if not col.final_pdf_filename:
+    current_pdf = col.edited_pdf_filename or col.final_pdf_filename
+    if not current_pdf:
          raise HTTPException(status_code=400, detail="Collection has not been merged yet.")
          
     from app.services.pdf_merger import get_pdf_thumbnail
     
-    img_bytes = get_pdf_thumbnail(col.final_pdf_filename, page_index, zoom=zoom)
+    img_bytes = get_pdf_thumbnail(current_pdf, page_index, zoom=zoom)
     
     if not img_bytes:
          raise HTTPException(status_code=404, detail="Thumbnail could not be generated.")
          
-    return Response(content=img_bytes, media_type="image/png")
+    return Response(
+        content=img_bytes,
+        media_type="image/png",
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+    )
 
 
 @router.get("/{collection_id}/download")
@@ -484,9 +504,10 @@ async def insert_file_into_collection_pdf(
     collection_id: str,
     position: str = Form(...),
     page_index: int = Form(0),
-    file: UploadFile = File(...)
+    file: Optional[UploadFile] = File(None),
+    url: Optional[str] = Form(None),
 ):
-    """Insert a PDF or Image into the currently active final PDF of the collection."""
+    """Insert a PDF, image, or fetched webpage into the active PDF."""
     if collection_id not in collections:
         raise HTTPException(status_code=404, detail="Collection not found")
         
@@ -496,16 +517,52 @@ async def insert_file_into_collection_pdf(
     if not current_pdf:
         return CollectionResponse(success=False, error="No active PDF to insert into.")
         
-    import shutil
-    safe_filename = f"insert_{generate_job_id()}_{sanitize_filename(file.filename)}"
-    insert_path = get_output_dir() / safe_filename
-    
-    try:
-        with open(insert_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        logger.error(f"Failed to save inserted file: {e}")
-        return CollectionResponse(success=False, error="Failed to save uploaded file.")
+    if bool(file) == bool(url):
+        return CollectionResponse(success=False, error="Provide exactly one file or webpage link.")
+
+    insert_path: Path
+    temporary_insert_path = False
+    if url:
+        normalized_url = normalize_url(url)
+        is_safe, security_error = validate_url_security(normalized_url)
+        if not is_safe:
+            return CollectionResponse(success=False, error=security_error)
+        html, fetch_error, _ = await fetch_webpage(normalized_url)
+        if not html:
+            return CollectionResponse(success=False, error=fetch_error or "Unable to fetch webpage.")
+        content = await extract_content(html, normalized_url)
+        if not content.html_content or content.quality_score < 10:
+            return CollectionResponse(success=False, error="No meaningful content was found at this link.")
+        generated_filename = await generate_pdf(
+            content=content,
+            title=content.title or normalized_url,
+            include_images=True,
+            include_links=True,
+            include_toc=True,
+            include_code=True,
+            page_size="A4",
+            font_size="medium",
+            font_family="system",
+        )
+        if not generated_filename:
+            return CollectionResponse(success=False, error="Failed to generate PDF from the link.")
+        insert_path = get_output_dir() / generated_filename
+    else:
+        original_name = file.filename or "inserted-file"
+        extension = Path(original_name).suffix.lower()
+        if extension not in SUPPORTED_UPLOAD_EXTENSIONS:
+            return CollectionResponse(success=False, error="Only PDF, PNG, JPG, JPEG, and WEBP files are supported.")
+
+        import shutil
+        safe_filename = f"insert_{generate_job_id()}_{sanitize_filename(original_name)}"
+        insert_path = get_output_dir() / safe_filename
+        temporary_insert_path = True
+        try:
+            with open(insert_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+        except Exception as e:
+            logger.error(f"Failed to save inserted file: {e}")
+            return CollectionResponse(success=False, error="Failed to save uploaded file.")
         
     from app.services.pdf_merger import insert_file_into_pdf
     
@@ -513,6 +570,9 @@ async def insert_file_into_collection_pdf(
     
     if not new_filename:
         return CollectionResponse(success=False, error="Failed to merge inserted file.")
+
+    if temporary_insert_path:
+        insert_path.unlink(missing_ok=True)
         
     col.edited_pdf_filename = new_filename
     col.edited_total_pages = total_pages

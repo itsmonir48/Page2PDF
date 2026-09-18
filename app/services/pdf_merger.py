@@ -340,3 +340,18 @@ def insert_file_into_pdf(base_filename: str, insert_path: Path, position: str, p
         logger.error(f"Error inserting file: {e}", exc_info=True)
         return None, 0, 0.0
 
+
+def convert_image_to_pdf(image_path: Path, output_path: Path) -> bool:
+    """Convert one uploaded image into a PDF for collection merging."""
+    try:
+        image_doc = fitz.open(image_path)
+        pdf_bytes = image_doc.convert_to_pdf()
+        image_doc.close()
+        pdf_doc = fitz.open("pdf", pdf_bytes)
+        pdf_doc.save(output_path)
+        pdf_doc.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error converting image to PDF: {e}", exc_info=True)
+        return False
+

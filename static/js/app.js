@@ -56,6 +56,8 @@
     const insertFileModal = document.getElementById('insert-file-modal');
     const closeInsertModal = document.getElementById('close-insert-modal');
     const insertFileInput = document.getElementById('insert-file-input');
+    const insertFileDropZone = document.getElementById('insert-file-drop-zone');
+    const insertUrlInput = document.getElementById('insert-url-input');
     const insertPositionSelect = document.getElementById('insert-position-select');
     const insertPageNumberContainer = document.getElementById('insert-page-number-container');
     const insertPageNumber = document.getElementById('insert-page-number');
@@ -67,6 +69,7 @@
     const pmErrorMessage = document.getElementById('pm-error-message');
     const pmBtnPreview = document.getElementById('pm-btn-preview');
     const pmBtnContinue = document.getElementById('pm-btn-continue');
+    const editDownloadBtn = document.getElementById('edit-download-btn');
     
     let totalPagesCount = 0;
     let pageStates = []; // true = keep, false = remove
@@ -96,6 +99,7 @@
     let currentCollectionId = null;
     let pollInterval = null;
     let collectionItems = []; // Local cache of items for rendering
+    let thumbnailVersion = Date.now();
 
     // ── Navigation & Setup ──────────────────────────────────────
     navToggle.addEventListener('click', () => {
@@ -120,6 +124,7 @@
     });
 
     const pdfUploadInput = document.getElementById('pdf-upload-input');
+    const uploadDropZone = document.getElementById('upload-pdf-btn');
 
     urlInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -132,67 +137,67 @@
     addUrlBtn.addEventListener('click', addUrlToCollection);
     generateAllBtn.addEventListener('click', startGeneration);
     
-    // PDF File Upload Handler
+    const supportedFilePattern = /\.(pdf|png|jpe?g|webp)$/i;
+
     pdfUploadInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        if (!file.name.toLowerCase().endsWith('.pdf')) {
-            showError("Only PDF files are supported.");
+        await uploadFilesToCollection(Array.from(e.target.files || []));
+        e.target.value = '';
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadDropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            uploadDropZone.classList.add('drag-over');
+        });
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadDropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            uploadDropZone.classList.remove('drag-over');
+        });
+    });
+    uploadDropZone.addEventListener('drop', async (e) => {
+        const files = Array.from(e.dataTransfer.files || []);
+        if (files.length) {
+            await uploadFilesToCollection(files);
+            return;
+        }
+        const droppedUrl = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+        if (droppedUrl && /^https?:\/\//i.test(droppedUrl.trim())) {
+            urlInput.value = droppedUrl.trim();
+            await addUrlToCollection();
+        }
+    });
+
+    async function uploadFilesToCollection(files) {
+        const invalidFile = files.find(file => !supportedFilePattern.test(file.name));
+        if (invalidFile) {
+            showError('Only PDF, PNG, JPG, JPEG, and WEBP files are supported.');
+            return;
+        }
+        if (!files.length || !(await ensureCollection())) {
+            showError('Failed to initialize collection. Please try again.');
             return;
         }
 
-        // Initialize collection if it doesn't exist
-        if (!currentCollectionId) {
+        for (const file of files) {
+            const tempId = 'upload_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+            collectionItems.push({ id: tempId, url: `local://${file.name}`, title: 'Uploading...', status: 'queued' });
+            renderUrlList();
+            const formData = new FormData();
+            formData.append('file', file);
             try {
-                const res = await fetch('/api/collections', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title: "My PDF Collection" })
-                });
+                const res = await fetch(`/api/collections/${currentCollectionId}/upload`, { method: 'POST', body: formData });
                 const data = await res.json();
-                if (data.success) {
-                    currentCollectionId = data.collection.id;
-                } else {
-                    showError("Failed to initialize collection.");
-                    return;
-                }
-            } catch (err) {
-                showError("Unable to connect to the server.");
-                return;
-            }
-        }
-        
-        // Add loading placeholder to UI
-        const tempId = 'upload_' + Date.now();
-        collectionItems.push({ id: tempId, url: file.name, title: "Uploading...", status: 'queued' });
-        renderUrlList();
-        
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        try {
-            const res = await fetch(`/api/collections/${currentCollectionId}/upload`, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            
-            if (data.success) {
+                if (!data.success) throw new Error(data.error || 'Upload failed.');
                 collectionItems = data.collection.items;
-                renderUrlList();
-                e.target.value = ''; // Reset input
-            } else {
-                showError(data.error || "Failed to upload PDF.");
+            } catch (err) {
+                showError(err.message || 'Upload failed due to a network error.');
                 collectionItems = collectionItems.filter(item => item.id !== tempId);
-                renderUrlList();
             }
-        } catch (err) {
-            showError("Upload failed due to a network error.");
-            collectionItems = collectionItems.filter(item => item.id !== tempId);
             renderUrlList();
         }
-    });
+    }
 
     newBtn.addEventListener('click', resetToHome);
     retryBtn.addEventListener('click', () => {
@@ -284,6 +289,8 @@
         insertFileModal.style.display = 'flex';
         insertErrorMessage.textContent = '';
         insertFileInput.value = '';
+        insertUrlInput.value = '';
+        insertFileDropZone.childNodes[0].textContent = 'Drop a PDF or image here, or click to browse';
         insertPositionSelect.value = 'end';
         insertPageNumberContainer.style.display = 'none';
         insertPageNumber.value = '';
@@ -300,11 +307,41 @@
             insertPageNumberContainer.style.display = 'none';
         }
     });
+
+    insertFileDropZone.addEventListener('click', () => insertFileInput.click());
+    ['dragenter', 'dragover'].forEach(eventName => {
+        insertFileDropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            insertFileDropZone.classList.add('drag-over');
+        });
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        insertFileDropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            insertFileDropZone.classList.remove('drag-over');
+        });
+    });
+    insertFileDropZone.addEventListener('drop', (e) => {
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            insertFileInput.files = e.dataTransfer.files;
+            insertFileDropZone.childNodes[0].textContent = file.name;
+        }
+    });
+    insertFileInput.addEventListener('change', () => {
+        const file = insertFileInput.files[0];
+        if (file) insertFileDropZone.childNodes[0].textContent = file.name;
+    });
     
     btnConfirmInsert.addEventListener('click', async () => {
         const file = insertFileInput.files[0];
-        if (!file) {
-            insertErrorMessage.textContent = 'Please select a file to insert.';
+        const url = insertUrlInput.value.trim();
+        if (!file && !url) {
+            insertErrorMessage.textContent = 'Select a PDF/image or enter a webpage link.';
+            return;
+        }
+        if (file && url) {
+            insertErrorMessage.textContent = 'Choose either a file or a link, not both.';
             return;
         }
         
@@ -327,7 +364,8 @@
         insertErrorMessage.textContent = '';
         
         const formData = new FormData();
-        formData.append('file', file);
+        if (file) formData.append('file', file);
+        if (url) formData.append('url', url);
         formData.append('position', position);
         formData.append('page_index', pageIndex);
         
@@ -348,7 +386,7 @@
             insertErrorMessage.textContent = 'Network error occurred.';
         } finally {
             btnConfirmInsert.disabled = false;
-            btnConfirmInsert.querySelector('.btn-text').textContent = 'Insert File';
+            btnConfirmInsert.querySelector('.btn-text').textContent = 'Insert File or Link';
         }
     });
     
@@ -357,6 +395,11 @@
     pmBtnContinue.addEventListener('click', () => {
         pmSection.style.display = 'none';
         downloadSection.classList.add('active');
+    });
+    editDownloadBtn.addEventListener('click', () => {
+        downloadSection.classList.remove('active');
+        pmSection.style.display = 'block';
+        pmSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     
     // Modal Events
@@ -817,9 +860,13 @@
         // Setup Download Section
         const completedCount = collection.items.filter(i => i.status === 'completed').length;
         dlSources.textContent = completedCount;
-        dlPages.textContent = collection.total_pages;
-        dlSize.textContent = `${collection.final_pdf_size_mb.toFixed(1)} MB`;
-        downloadFilename.textContent = collection.final_pdf_filename;
+        const activePageCount = collection.edited_total_pages || collection.total_pages;
+        const activeSize = collection.edited_size_mb || collection.final_pdf_size_mb;
+        const activeFilename = collection.edited_pdf_filename || collection.final_pdf_filename;
+        thumbnailVersion = Date.now();
+        dlPages.textContent = activePageCount;
+        dlSize.textContent = `${activeSize.toFixed(1)} MB`;
+        downloadFilename.textContent = activeFilename;
         
         // Set custom filename input with collection title
         const filenameInput = document.getElementById('custom-filename-input');
@@ -902,7 +949,7 @@
         });
 
         // Initialize Page Management UI
-        totalPagesCount = collection.total_pages;
+        totalPagesCount = activePageCount;
         pageStates = Array(totalPagesCount).fill(true);
         pageSelections = Array(totalPagesCount).fill(false);
         pageRotations = {};
@@ -930,7 +977,7 @@
             
             div.innerHTML = `
                 <div class="pm-thumbnail-img-wrapper" style="transform: rotate(${currentRotation}deg); transition: transform 0.3s ease;">
-                    <img class="pm-thumbnail-img" src="/api/collections/${currentCollectionId}/thumbnails/${originalIndex}" loading="lazy" alt="Page ${originalIndex + 1}">
+                    <img class="pm-thumbnail-img" src="/api/collections/${currentCollectionId}/thumbnails/${originalIndex}?v=${thumbnailVersion}" loading="lazy" alt="Page ${originalIndex + 1}">
                     <div class="pm-thumbnail-zoom" title="View Full Page" style="transform: rotate(-${currentRotation}deg);">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
                     </div>
@@ -1008,7 +1055,7 @@
             modalImg.style.display = 'block';
         };
         
-        modalImg.src = `/api/collections/${currentCollectionId}/thumbnails/${pageIndex}?zoom=2.0`;
+        modalImg.src = `/api/collections/${currentCollectionId}/thumbnails/${pageIndex}?zoom=2.0&v=${thumbnailVersion}`;
     }
     
     function updatePmUI() {
