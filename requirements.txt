@@ -11,9 +11,9 @@ httpx>=0.27.0
 # Content Extraction
 trafilatura>=1.12.0
 beautifulsoup4>=4.12.0
-readability-lxml>=0.8.1
-lxml
-lxml_html_clean
+readability-lxml==0.8.1
+lxml>=6.1.1
+lxml_html_clean>=0.4.0
 
 # PDF Generation
 weasyprint>=62.0
