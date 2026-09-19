@@ -306,9 +306,10 @@ def insert_file_into_pdf(base_filename: str, insert_path: Path, position: str, p
         
         # Handle images
         if insert_path.suffix.lower() in ['.png', '.jpg', '.jpeg', '.webp']:
-            img = fitz.open(insert_path)
-            pdfbytes = img.convert_to_pdf()
-            img.close()
+            pdfbytes = _standardize_image_pdf_bytes(insert_path)
+            if not pdfbytes:
+                base_doc.close()
+                return None, 0, 0.0
             insert_doc = fitz.open("pdf", pdfbytes)
         else:
             insert_doc = fitz.open(insert_path)
@@ -341,12 +342,41 @@ def insert_file_into_pdf(base_filename: str, insert_path: Path, position: str, p
         return None, 0, 0.0
 
 
-def convert_image_to_pdf(image_path: Path, output_path: Path) -> bool:
-    """Convert one uploaded image into a PDF for collection merging."""
+def _standardize_image_pdf_bytes(image_path: Path) -> Optional[bytes]:
+    """Place an image proportionally on a standard A4 page."""
     try:
-        image_doc = fitz.open(image_path)
-        pdf_bytes = image_doc.convert_to_pdf()
-        image_doc.close()
+        pixmap = fitz.Pixmap(str(image_path))
+        page_width, page_height = 595.0, 842.0
+        margin = 36.0
+        available_width = page_width - (margin * 2)
+        available_height = page_height - (margin * 2)
+        scale = min(available_width / pixmap.width, available_height / pixmap.height)
+        image_width = pixmap.width * scale
+        image_height = pixmap.height * scale
+        left = (page_width - image_width) / 2
+        top = (page_height - image_height) / 2
+
+        pdf_doc = fitz.open()
+        page = pdf_doc.new_page(width=page_width, height=page_height)
+        page.insert_image(
+            fitz.Rect(left, top, left + image_width, top + image_height),
+            pixmap=pixmap,
+            keep_proportion=True,
+        )
+        pdf_bytes = pdf_doc.tobytes(garbage=3, deflate=True)
+        pdf_doc.close()
+        return pdf_bytes
+    except Exception as e:
+        logger.error(f"Error standardizing image: {e}", exc_info=True)
+        return None
+
+
+def convert_image_to_pdf(image_path: Path, output_path: Path) -> bool:
+    """Convert an image into a standard A4 PDF page."""
+    try:
+        pdf_bytes = _standardize_image_pdf_bytes(image_path)
+        if not pdf_bytes:
+            return False
         pdf_doc = fitz.open("pdf", pdf_bytes)
         pdf_doc.save(output_path)
         pdf_doc.close()
