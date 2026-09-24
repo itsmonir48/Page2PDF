@@ -195,6 +195,18 @@ class EditPagesRequest(BaseModel):
     rotations: Optional[Dict[int, int]] = Field(None, description="Map of page index to rotation degrees (90, 180, 270)")
 
 
+class IndexEntry(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    page: int = Field(..., ge=1)
+    level: int = Field(1, ge=1, le=3)
+
+
+class EditIndexRequest(BaseModel):
+    enabled: bool = True
+    automatic: bool = True
+    entries: List[IndexEntry] = Field(default_factory=list)
+
+
 class CollectionResponse(BaseModel):
     success: bool
     collection: Optional[Collection] = None

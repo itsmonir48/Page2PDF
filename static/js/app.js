@@ -53,6 +53,16 @@
     const pmBtnKeepSelected = document.getElementById('pm-btn-keep-selected');
     const pmBtnRestoreAll = document.getElementById('pm-btn-restore-all');
     const pmBtnInsertFile = document.getElementById('pm-btn-insert-file');
+    const pmBtnIndex = document.getElementById('pm-btn-index');
+    const indexModal = document.getElementById('index-modal');
+    const closeIndexModal = document.getElementById('close-index-modal');
+    const indexAutomaticBtn = document.getElementById('index-automatic-btn');
+    const indexManualBtn = document.getElementById('index-manual-btn');
+    const indexOffBtn = document.getElementById('index-off-btn');
+    const indexModeHelp = document.getElementById('index-mode-help');
+    const indexEntriesInput = document.getElementById('index-entries-input');
+    const indexErrorMessage = document.getElementById('index-error-message');
+    const indexApplyBtn = document.getElementById('index-apply-btn');
     const insertFileModal = document.getElementById('insert-file-modal');
     const closeInsertModal = document.getElementById('close-insert-modal');
     const insertFileInput = document.getElementById('insert-file-input');
@@ -76,6 +86,8 @@
     let pageSelections = []; // true = selected in UI, false = not selected
     let pageRotations = {}; // originalPageIndex -> degrees (90, 180, 270)
     let pageOrder = []; // array of original page indices in current order
+    let indexMode = 'automatic';
+    let indexEnabled = true;
 
     // Settings
     const settingTitle = document.getElementById('setting-title');
@@ -287,6 +299,82 @@
         pmRangeInput.value = '';
         pmErrorMessage.textContent = '';
         updatePmUI();
+    });
+
+    // Insert File Modal Events
+    pmBtnIndex.addEventListener('click', () => {
+        indexModal.style.display = 'flex';
+        indexMode = 'automatic';
+        indexEnabled = true;
+        indexEntriesInput.style.display = 'none';
+        indexErrorMessage.textContent = '';
+        indexModeHelp.textContent = 'Keep the existing source bookmarks and headings.';
+        updateIndexModeButtons();
+    });
+    closeIndexModal.addEventListener('click', () => { indexModal.style.display = 'none'; });
+    indexAutomaticBtn.addEventListener('click', () => {
+        indexMode = 'automatic';
+        indexEnabled = true;
+        indexEntriesInput.style.display = 'none';
+        indexModeHelp.textContent = 'Keep the existing source bookmarks and headings.';
+        updateIndexModeButtons();
+    });
+    indexManualBtn.addEventListener('click', () => {
+        indexMode = 'manual';
+        indexEnabled = true;
+        indexEntriesInput.style.display = 'block';
+        indexModeHelp.textContent = 'One entry per line: Title | page number | level (level is optional).';
+        updateIndexModeButtons();
+    });
+    indexOffBtn.addEventListener('click', () => {
+        indexMode = 'automatic';
+        indexEnabled = false;
+        indexEntriesInput.style.display = 'none';
+        indexModeHelp.textContent = 'Remove all clickable index/bookmark entries from the PDF.';
+        updateIndexModeButtons();
+    });
+
+    function updateIndexModeButtons() {
+        [indexOffBtn, indexAutomaticBtn, indexManualBtn].forEach(button => button.classList.remove('active'));
+        if (!indexEnabled) indexOffBtn.classList.add('active');
+        else if (indexMode === 'manual') indexManualBtn.classList.add('active');
+        else indexAutomaticBtn.classList.add('active');
+    }
+    indexApplyBtn.addEventListener('click', async () => {
+        const entries = [];
+        if (indexMode === 'manual') {
+            const lines = indexEntriesInput.value.split('\n').map(line => line.trim()).filter(Boolean);
+            for (const line of lines) {
+                const parts = line.split('|').map(part => part.trim());
+                const page = Number(parts[1]);
+                const level = parts[2] ? Number(parts[2]) : 1;
+                if (!parts[0] || !Number.isInteger(page) || page < 1 || page > totalPagesCount || !Number.isInteger(level) || level < 1 || level > 3) {
+                    indexErrorMessage.textContent = `Invalid entry: ${line}`;
+                    return;
+                }
+                entries.push({ title: parts[0], page, level });
+            }
+            if (!entries.length) {
+                indexErrorMessage.textContent = 'Add at least one manual index entry.';
+                return;
+            }
+        }
+        indexApplyBtn.disabled = true;
+        indexErrorMessage.textContent = '';
+        try {
+            const response = await fetch(`/api/collections/${currentCollectionId}/edit-index`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: indexEnabled, automatic: indexMode === 'automatic', entries })
+            });
+            const data = await response.json();
+            if (!data.success) throw new Error(data.error || 'Failed to apply index.');
+            indexModal.style.display = 'none';
+            showCompleted(data.collection);
+        } catch (error) {
+            indexErrorMessage.textContent = error.message || 'Failed to apply index.';
+        } finally {
+            indexApplyBtn.disabled = false;
+        }
     });
 
     // Insert File Modal Events
@@ -833,7 +921,7 @@
             title: settingTitle.value.trim() || 'Study Material Collection',
             add_cover_page: settingCover.checked,
             add_source_separator: settingSeparator.checked,
-            generate_toc: true
+            generate_toc: settingToc.checked
         };
 
         try {

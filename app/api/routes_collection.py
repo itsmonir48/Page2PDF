@@ -9,6 +9,7 @@ import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
+import fitz
 from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import FileResponse
 
@@ -16,13 +17,13 @@ from app.models.schemas import (
     Collection, CollectionItem, CollectionCreateRequest,
     CollectionAddUrlRequest, CollectionReorderRequest,
     CollectionGenerateRequest, CollectionMergeRequest,
-    CollectionResponse, JobStatus, EditPagesRequest
+    CollectionResponse, JobStatus, EditPagesRequest, EditIndexRequest
 )
 from app.services.security import validate_url_security
 from app.services.fetcher import fetch_webpage
 from app.services.extractor import extract_content
 from app.services.pdf_generator import generate_pdf
-from app.services.pdf_merger import merge_pdfs
+from app.services.pdf_merger import merge_pdfs, create_contents_pdf
 from app.utils.url_utils import normalize_url, is_valid_url_format, sanitize_filename
 from app.utils.file_utils import get_output_dir, generate_job_id, file_exists
 
@@ -417,6 +418,80 @@ async def apply_page_edits(collection_id: str, request: EditPagesRequest):
     col.edited_size_mb = size_mb
     
     return CollectionResponse(success=True, collection=col)
+
+
+@router.post("/{collection_id}/edit-index", response_model=CollectionResponse)
+async def apply_index_edits(collection_id: str, request: EditIndexRequest):
+    """Apply automatic or manually defined clickable PDF bookmarks."""
+    if collection_id not in collections:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    col = collections[collection_id]
+    current_pdf = col.edited_pdf_filename or col.final_pdf_filename
+    if not current_pdf:
+        return CollectionResponse(success=False, error="Collection has not been merged yet.")
+
+    input_path = get_output_dir() / current_pdf
+    if not input_path.exists():
+        return CollectionResponse(success=False, error="The active PDF file is no longer available.")
+
+    try:
+        document = fitz.open(input_path)
+        has_contents_page = len(document) > 0 and document[0].get_text().lstrip().startswith("Contents")
+        if not request.enabled:
+            entries = []
+        elif request.automatic:
+            entries = document.get_toc()
+            if not entries:
+                entries = [[1, item.title or f"Source {index + 1}", 1]
+                           for index, item in enumerate(col.items)
+                           if item.status == JobStatus.COMPLETED]
+        else:
+            entries = [[entry.level, entry.title.strip(), entry.page] for entry in request.entries]
+
+        valid_entries = [entry for entry in entries if 1 <= entry[2] <= len(document)]
+        if request.enabled and not valid_entries:
+            document.close()
+            return CollectionResponse(success=False, error="Add at least one valid index entry.")
+
+        if not request.enabled:
+            while len(document) > 0 and document[0].get_text().lstrip().startswith("Contents"):
+                document.delete_page(0)
+            document.set_toc([])
+        elif not request.automatic:
+            target_offset = 0 if has_contents_page else 1
+            if has_contents_page:
+                document.delete_page(0)
+            contents_doc = create_contents_pdf(valid_entries, target_offset)
+            document.insert_pdf(contents_doc, start_at=0)
+            contents_doc.close()
+            for contents_page_index, chunk_start in enumerate(range(0, len(valid_entries), 28)):
+                page = document.load_page(contents_page_index)
+                y = 122
+                for level, _title, target_page in valid_entries[chunk_start:chunk_start + 28]:
+                    indent = min(max(level - 1, 0), 2) * 18
+                    page.insert_link({
+                        "kind": fitz.LINK_GOTO,
+                        "from": fitz.Rect(48 + indent, y - 15, 535, y + 7),
+                        "page": target_page - 1 + target_offset,
+                    })
+                    y += 24 if level == 1 else 20
+            document.set_toc([[level, title, page + target_offset] for level, title, page in valid_entries])
+        else:
+            document.set_toc(valid_entries)
+        output_filename = f"indexed_{generate_job_id()}.pdf"
+        output_path = get_output_dir() / output_filename
+        document.save(output_path, garbage=3, deflate=True)
+        page_count = len(document)
+        document.close()
+
+        col.edited_pdf_filename = output_filename
+        col.edited_total_pages = page_count
+        col.edited_size_mb = output_path.stat().st_size / (1024 * 1024)
+        return CollectionResponse(success=True, collection=col)
+    except Exception as e:
+        logger.error(f"Error applying PDF index: {e}", exc_info=True)
+        return CollectionResponse(success=False, error="Failed to apply the PDF index.")
 
 
 from fastapi.responses import Response

@@ -235,6 +235,9 @@ async def generate_pdf(
         # Write to file
         output_path.write_bytes(pdf)
 
+        if include_toc and content.headings:
+            _add_pdf_heading_bookmarks(output_path, content.headings)
+
         file_size_mb = len(pdf) / (1024 * 1024)
         logger.info(f"PDF generated: {filename} ({file_size_mb:.2f} MB)")
 
@@ -243,6 +246,63 @@ async def generate_pdf(
     except Exception as e:
         logger.error(f"PDF generation failed: {e}", exc_info=True)
         return None
+
+
+def _add_pdf_heading_bookmarks(pdf_path: Path, headings: List[Dict]) -> None:
+    """Map extracted HTML headings to their rendered PDF pages."""
+    import fitz
+
+    document = fitz.open(pdf_path)
+    bookmarks = []
+    last_page = -1
+    for heading in headings:
+        title = " ".join(str(heading.get("text", "")).split())
+        if not title:
+            continue
+        page_number = None
+        for page_index in range(max(last_page, 0), len(document)):
+            if document.load_page(page_index).search_for(title):
+                page_number = page_index + 1
+                break
+        if page_number is None:
+            continue
+        level = max(1, min(int(heading.get("level", 1)), 3))
+        bookmarks.append([level, title, page_number])
+        last_page = page_number - 1
+
+    if bookmarks:
+        existing_toc = document.get_toc()
+        if (
+            existing_toc
+            and existing_toc[0][1].strip() == bookmarks[0][1].strip()
+            and existing_toc[0][2] == bookmarks[0][2]
+        ):
+            bookmarks = bookmarks[1:]
+        if not bookmarks:
+            document.close()
+            return
+        reset_path = pdf_path.with_suffix(".reset.pdf")
+        document.set_toc([])
+        document.save(reset_path, garbage=3, deflate=True)
+        document.close()
+        reset_document = fitz.open(reset_path)
+        reset_document.set_toc(bookmarks)
+        indexed_path = pdf_path.with_suffix(".indexed.pdf")
+        reset_document.save(indexed_path, garbage=3, deflate=True)
+        reset_document.close()
+        reset_path.replace(pdf_path)
+        indexed_path.replace(pdf_path)
+        final_document = fitz.open(pdf_path)
+        unique_toc = []
+        for entry in final_document.get_toc():
+            if entry not in unique_toc:
+                unique_toc.append(entry)
+        final_document.set_toc(unique_toc)
+        final_document.save(indexed_path, garbage=3, deflate=True)
+        final_document.close()
+        indexed_path.replace(pdf_path)
+    else:
+        document.close()
 
 
 def _get_default_template() -> str:

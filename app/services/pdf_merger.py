@@ -74,6 +74,65 @@ def create_separator_page(source_num: int, title: str, url: str, output_path: Pa
     doc.close()
 
 
+def create_contents_pdf(entries: List[List], target_offset: int) -> fitz.Document:
+    """Create a polished, clickable Contents section for the merged PDF."""
+    contents_doc = fitz.open()
+    entries_per_page = 28
+    chunks = [entries[index:index + entries_per_page] for index in range(0, len(entries), entries_per_page)]
+    chunks = chunks or [[]]
+
+    for chunk_index, chunk in enumerate(chunks):
+        page = contents_doc.new_page(width=595, height=842)
+        page.insert_text(
+            fitz.Point(54, 72),
+            "Contents" if chunk_index == 0 else "Contents (continued)",
+            fontsize=25,
+            fontname="helv",
+            color=(0.08, 0.11, 0.18),
+        )
+        page.draw_line(fitz.Point(54, 88), fitz.Point(541, 88), color=(0.55, 0.61, 0.72), width=0.8)
+
+        y = 122
+        for level, title, target_page in chunk:
+            indent = min(max(level - 1, 0), 2) * 18
+            font_size = 12 if level == 1 else 10.5
+            color = (0.08, 0.16, 0.33) if level == 1 else (0.20, 0.25, 0.34)
+            page.insert_text(
+                fitz.Point(54 + indent, y),
+                str(title),
+                fontsize=font_size,
+                fontname="helv",
+                color=color,
+            )
+            page.insert_text(
+                fitz.Point(510, y),
+                str(target_page + target_offset),
+                fontsize=font_size,
+                fontname="helv",
+                color=color,
+            )
+            y += 24 if level == 1 else 20
+
+    return contents_doc
+
+
+def extract_pdf_index_entries(document: fitz.Document, fallback_title: str) -> List[List]:
+    """Create useful automatic index entries when a PDF has no outline."""
+    entries = []
+    for page_index in range(len(document)):
+        lines = [
+            " ".join(line.split())
+            for line in document.load_page(page_index).get_text().splitlines()
+            if line.strip()
+        ]
+        heading = next(
+            (line for line in lines if 3 <= len(line) <= 100 and line.lower() not in {"contents", "table of contents"}),
+            None,
+        )
+        entries.append([1, heading or (fallback_title if page_index == 0 else f"{fallback_title} - Page {page_index + 1}"), page_index + 1])
+    return entries
+
+
 def merge_pdfs(
     items: List[Dict],
     title: str = "Study Material Collection",
@@ -89,9 +148,10 @@ def merge_pdfs(
         merged_doc = fitz.open()
         output_dir = get_output_dir()
         
-        # We need to calculate total pages first if we want to show it on cover
+        # Inspect sources once so page targets remain correct after Contents is inserted.
         total_pages = 0
         valid_items = []
+        source_tocs = {}
         for item in items:
             pdf_path = output_dir / item['filename']
             if pdf_path.exists():
@@ -99,6 +159,15 @@ def merge_pdfs(
                 total_pages += len(doc)
                 if add_source_separator:
                     total_pages += 1
+                source_toc = doc.get_toc() or extract_pdf_index_entries(
+                    doc,
+                    item.get('title') or Path(item['filename']).stem,
+                )
+                unique_source_toc = []
+                for entry in source_toc:
+                    if entry not in unique_source_toc:
+                        unique_source_toc.append(entry)
+                source_tocs[item['filename']] = unique_source_toc
                 doc.close()
                 valid_items.append(item)
                 
@@ -106,13 +175,22 @@ def merge_pdfs(
             logger.error("No valid PDFs to merge.")
             return None, 0, 0.0
 
-        if add_cover_page:
-            # We add 1 for the cover page itself
-            total_pages += 1
-            if generate_toc:
-                # Approximate TOC pages: 1 page per 40 items
-                toc_pages = max(1, len(valid_items) // 40 + 1)
-                total_pages += toc_pages
+        cover_pages = 1 if add_cover_page else 0
+        content_entries = []
+        for index, item in enumerate(valid_items):
+            source_title = item.get('title') or f"Source {index + 1}"
+            content_entries.append([1, source_title, 0])
+            source_root_skipped = any(
+                entry[1].strip() == source_title.strip() and entry[2] == 1
+                for entry in source_tocs.get(item['filename'], [])
+            )
+            for entry in source_tocs.get(item['filename'], []):
+                if entry[1].strip() == source_title.strip() and entry[2] == 1:
+                    continue
+                level = entry[0] if source_root_skipped else entry[0] + 1
+                content_entries.append([level, entry[1], 0])
+        toc_pages = max(1, (len(content_entries) + 27) // 28) if generate_toc else 0
+        total_pages += cover_pages + toc_pages
         
         temp_files = []
         
@@ -149,10 +227,16 @@ def merge_pdfs(
             src_doc = fitz.open(pdf_path)
             
             # Try to preserve sub-bookmarks if possible
-            src_toc = src_doc.get_toc()
+            src_toc = source_tocs.get(item['filename'], [])
+            source_root_skipped = any(
+                entry[1].strip() == source_title.strip() and entry[2] == 1
+                for entry in src_toc
+            )
             for entry in src_toc:
+                if entry[1].strip() == source_title.strip() and entry[2] == 1:
+                    continue
                 # Shift level down and adjust page number
-                entry[0] += 1
+                entry[0] = entry[0] if source_root_skipped else entry[0] + 1
                 entry[2] += current_page - 1
                 if add_source_separator:
                      entry[2] += 1
@@ -163,6 +247,25 @@ def merge_pdfs(
             if add_source_separator:
                  current_page += 1
             src_doc.close()
+
+        if generate_toc:
+            for index, entry in enumerate(toc):
+                content_entries[index][2] = entry[2]
+            contents_doc = create_contents_pdf(content_entries, toc_pages)
+            merged_doc.insert_pdf(contents_doc, start_at=0)
+            contents_doc.close()
+            for contents_page_index, chunk_start in enumerate(range(0, len(content_entries), 28)):
+                page = merged_doc.load_page(contents_page_index)
+                y = 122
+                for level, _title, target_page in content_entries[chunk_start:chunk_start + 28]:
+                    indent = min(max(level - 1, 0), 2) * 18
+                    page.insert_link({
+                        "kind": fitz.LINK_GOTO,
+                        "from": fitz.Rect(48 + indent, y - 15, 535, y + 7),
+                        "page": target_page - 1 + toc_pages,
+                    })
+                    y += 24 if level == 1 else 20
+            toc = [[level, title, page + toc_pages] for level, title, page in toc]
 
         # Apply TOC / Bookmarks
         if generate_toc:

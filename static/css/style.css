@@ -136,7 +136,13 @@ a:hover { color: var(--accent-hover); }
 
 .hero-content {
     position: relative; z-index: 1; text-align: center;
-    max-width: 720px; width: 100%;
+    max-width: 760px; width: 100%;
+    animation: hero-arrive 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes hero-arrive {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .hero-badge {
@@ -175,12 +181,21 @@ a:hover { color: var(--accent-hover); }
 /* ── URL Input ─────────────────────────────────────────────────── */
 .input-section { margin-bottom: 20px; }
 
+.input-section {
+    padding: 18px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    background: linear-gradient(145deg, rgba(18,18,30,0.82), rgba(10,10,18,0.68));
+    box-shadow: 0 22px 70px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
 .input-wrapper {
     display: flex; align-items: center; gap: 0;
     background: var(--bg-input); border: 2px solid var(--border);
     border-radius: var(--radius); padding: 6px 6px 6px 16px;
     transition: border-color var(--transition), box-shadow var(--transition);
     max-width: 640px; margin: 0 auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
 }
 
 .input-wrapper:focus-within {
@@ -217,6 +232,34 @@ a:hover { color: var(--accent-hover); }
 .error-message {
     color: var(--error); font-size: 13px; margin-top: 8px;
     min-height: 20px; text-align: center;
+}
+
+.upload-wrapper { margin-bottom: 10px !important; }
+
+.upload-drop-zone {
+    max-width: 640px !important;
+    background: rgba(124,92,252,0.08) !important;
+    border: 1px dashed rgba(155,130,255,0.48) !important;
+    border-radius: var(--radius-sm) !important;
+    color: var(--text-primary) !important;
+    letter-spacing: 0.1px;
+}
+
+.upload-drop-zone:hover {
+    background: rgba(124,92,252,0.16) !important;
+    border-color: var(--accent-hover) !important;
+    box-shadow: 0 8px 26px rgba(124,92,252,0.14);
+    transform: translateY(-1px);
+}
+
+.input-section > div[style*="margin: 20px"] {
+    margin-top: 16px !important;
+    margin-bottom: 16px !important;
+}
+
+.input-section > div[style*="margin: 20px"] span {
+    color: var(--text-muted) !important;
+    letter-spacing: 1.5px !important;
 }
 
 /* ── Settings ──────────────────────────────────────────────────── */
@@ -472,22 +515,32 @@ a:hover { color: var(--accent-hover); }
 /* How It Works */
 .how-it-works { padding: 100px 0; background: var(--bg-secondary); }
 
-.steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; position: relative; }
+
+.steps-grid::before {
+    content: ''; position: absolute; top: 68px; left: 16%; right: 16%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(124,92,252,0.45), rgba(236,72,153,0.45), transparent);
+    z-index: 0;
+}
 
 .step-card {
     background: var(--bg-card); border: 1px solid var(--border);
     border-radius: var(--radius-lg); padding: 36px 28px;
     text-align: center; transition: all var(--transition);
-    position: relative; overflow: hidden;
+    position: relative; overflow: hidden; z-index: 1;
+    min-height: 282px;
 }
 
 .step-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: var(--shadow-lg); }
 
 .step-number {
-    font-size: 48px; font-weight: 900;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border-radius: 50%;
+    font-size: 15px; font-weight: 800;
     background: var(--gradient); -webkit-background-clip: text;
     -webkit-text-fill-color: transparent; background-clip: text;
-    opacity: 0.3; margin-bottom: 12px;
+    border: 1px solid rgba(124,92,252,0.35); opacity: 1; margin-bottom: 18px;
+    background-color: var(--bg-card);
 }
 
 .step-card-icon {
@@ -499,6 +552,15 @@ a:hover { color: var(--accent-hover); }
 
 .step-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
 .step-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+.step-card:nth-child(1) { animation: step-reveal 0.55s ease both; }
+.step-card:nth-child(2) { animation: step-reveal 0.55s 0.1s ease both; }
+.step-card:nth-child(3) { animation: step-reveal 0.55s 0.2s ease both; }
+
+@keyframes step-reveal {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
 /* Features */
 .features { padding: 100px 0; }
@@ -531,16 +593,36 @@ a:hover { color: var(--accent-hover); }
 
 .about-stats {
     display: flex; gap: 40px; margin-top: 32px;
-    padding-top: 32px; border-top: 1px solid var(--border);
+    padding: 24px 18px; border: 1px solid var(--glass-border);
+    border-radius: var(--radius); background: rgba(255,255,255,0.025);
 }
 
-.stat { text-align: center; }
+.stat { text-align: center; flex: 1; }
 .stat-value {
     display: block; font-size: 32px; font-weight: 800;
     background: var(--gradient); -webkit-background-clip: text;
     -webkit-text-fill-color: transparent; background-clip: text;
 }
 .stat-label { font-size: 13px; color: var(--text-muted); }
+
+.stat-label { display: block; max-width: 130px; margin: 0 auto; line-height: 1.4; }
+
+.stat + .stat { border-left: 1px solid var(--glass-border); }
+
+.index-mode-control {
+    display: flex; gap: 4px; width: fit-content; padding: 4px;
+    margin-bottom: 14px; border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm); background: rgba(255,255,255,0.025);
+}
+
+.index-mode-control .pm-btn {
+    border-color: transparent; padding: 8px 16px;
+}
+
+.index-mode-control .pm-btn.active {
+    background: var(--gradient-subtle); border-color: rgba(124,92,252,0.35);
+    color: var(--accent-hover); box-shadow: 0 0 18px rgba(124,92,252,0.1);
+}
 
 /* Footer */
 .footer {
@@ -872,8 +954,10 @@ a:hover { color: var(--accent-hover); }
     .url-input { width: 100%; text-align: center; }
     .generate-btn { width: 100%; justify-content: center; padding: 14px; }
     .steps-grid, .features-grid { grid-template-columns: 1fr; }
+    .steps-grid::before { top: 8%; bottom: 8%; left: 50%; right: auto; width: 1px; height: auto; }
     .settings-grid { grid-template-columns: 1fr; }
     .about-stats { flex-direction: column; gap: 20px; }
+    .stat + .stat { border-left: 0; border-top: 1px solid var(--glass-border); padding-top: 20px; }
     .hero-title { font-size: 32px; }
 }
 
