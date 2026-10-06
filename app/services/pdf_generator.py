@@ -277,10 +277,15 @@ def _add_pdf_heading_bookmarks(pdf_path: Path, headings: List[Dict]) -> None:
             and existing_toc[0][1].strip() == bookmarks[0][1].strip()
             and existing_toc[0][2] == bookmarks[0][2]
         ):
-            bookmarks = bookmarks[1:]
-        if not bookmarks:
-            document.close()
-            return
+            bookmarks = [existing_toc[0]] + bookmarks[1:]
+
+        normalized_bookmarks = []
+        previous_level = 0
+        for level, title, page_number in bookmarks:
+            normalized_level = min(max(1, level), previous_level + 1)
+            normalized_bookmarks.append([normalized_level, title, page_number])
+            previous_level = normalized_level
+        bookmarks = normalized_bookmarks
         reset_path = pdf_path.with_suffix(".reset.pdf")
         document.set_toc([])
         document.save(reset_path, garbage=3, deflate=True)
