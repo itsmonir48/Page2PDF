@@ -11,10 +11,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=10">
+    <link rel="stylesheet" href="/static/css/style.css?v=11">
     <script>
         (function () {
             try {
+                document.documentElement.classList.add('js');
                 var t = localStorage.getItem('p2p-theme');
                 if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
             } catch (e) {}
@@ -82,7 +83,7 @@
                 <a href="#home" class="nav-link">Workspace</a>
                 <a href="#how-it-works" class="nav-link">How it works</a>
                 <a href="#features" class="nav-link">Features</a>
-                <a href="#about" class="nav-link">About</a>
+                <a href="#faq" class="nav-link">FAQ</a>
             </div>
             <div class="nav-actions">
                 <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch colour theme" title="Switch theme">
@@ -100,7 +101,9 @@
         <!-- ─── Hero / Composer ─────────────────────────────────── -->
         <section class="hero" id="home">
             <div class="hero-bg" aria-hidden="true">
-                <div class="hero-glow"></div>
+                <div class="aurora aurora-1"></div>
+                <div class="aurora aurora-2"></div>
+                <div class="aurora aurora-3"></div>
                 <div class="hero-grid"></div>
             </div>
 
@@ -227,6 +230,13 @@
                     <button class="chip" data-url="https://docs.python.org/3/tutorial/classes.html" type="button">Python · Classes</button>
                     <button class="chip" data-url="https://www.geeksforgeeks.org/binary-search/" type="button">GFG · Binary Search</button>
                     <button class="chip" data-url="https://en.wikipedia.org/wiki/Machine_learning" type="button">Wikipedia · ML</button>
+                </div>
+
+                <div class="works-with" aria-label="Works great with">
+                    <span class="works-label">Works great with</span>
+                    <div class="works-list">
+                        <span>MDN</span><span>Python Docs</span><span>Wikipedia</span><span>GeeksforGeeks</span><span>Medium</span><span>DEV</span><span>W3Schools</span>
+                    </div>
                 </div>
             </div>
         </section>
@@ -411,28 +421,107 @@
             </div>
         </section>
 
+        <!-- ─── Showcase: before → after ────────────────────────── -->
+        <section class="section showcase" id="showcase">
+            <div class="section-container">
+                <header class="section-header" data-reveal>
+                    <span class="section-tag">See the difference</span>
+                    <h2 class="section-title">From cluttered page to <span class="gradient-text">clean PDF</span></h2>
+                    <p class="section-desc">Ads, pop-ups, sidebars and cookie banners are stripped away. What's left is the content you actually came for, typeset for reading.</p>
+                </header>
+
+                <div class="demo" data-reveal>
+                    <figure class="demo-browser" aria-label="A cluttered webpage">
+                        <div class="demo-chrome">
+                            <span class="demo-dots"><i></i><i></i><i></i></span>
+                            <span class="demo-url">example-tutorials.com/binary-search</span>
+                        </div>
+                        <div class="demo-page">
+                            <div class="demo-nav"><span></span><span></span><span></span><span></span></div>
+                            <div class="demo-ad demo-ad-wide">AD</div>
+                            <div class="demo-cols">
+                                <div class="demo-main">
+                                    <span class="demo-h"></span>
+                                    <span class="demo-line"></span><span class="demo-line"></span><span class="demo-line short"></span>
+                                    <span class="demo-code-ghost"></span>
+                                    <span class="demo-line"></span><span class="demo-line short"></span>
+                                </div>
+                                <div class="demo-side">
+                                    <div class="demo-ad">AD</div>
+                                    <span class="demo-line"></span><span class="demo-line"></span><span class="demo-line"></span>
+                                    <div class="demo-ad demo-ad-sm">AD</div>
+                                </div>
+                            </div>
+                            <div class="demo-popup">
+                                <strong>Subscribe!</strong>
+                                <span class="demo-line"></span>
+                                <span class="demo-btn"></span>
+                            </div>
+                            <div class="demo-cookie"><span class="demo-line"></span><span class="demo-btn"></span></div>
+                        </div>
+                        <figcaption>Before</figcaption>
+                    </figure>
+
+                    <div class="demo-arrow" aria-hidden="true">
+                        <span class="demo-arrow-line"></span>
+                        <span class="demo-arrow-badge">
+                            <svg viewBox="0 0 28 28" width="22" height="22"><rect x="1" y="1" width="26" height="26" rx="8" fill="var(--accent)"/><path d="M9 7.5h7l4.5 4.5v8.5a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2z" fill="#fff"/></svg>
+                        </span>
+                        <span class="demo-arrow-line"></span>
+                    </div>
+
+                    <figure class="demo-pdf" aria-label="The clean PDF result">
+                        <div class="demo-sheet demo-sheet-back2"></div>
+                        <div class="demo-sheet demo-sheet-back"></div>
+                        <div class="demo-sheet demo-sheet-front">
+                            <span class="sheet-kicker">example-tutorials.com</span>
+                            <span class="sheet-title">Binary Search</span>
+                            <span class="sheet-rule"></span>
+                            <span class="sheet-line"></span><span class="sheet-line"></span><span class="sheet-line short"></span>
+                            <span class="sheet-h2"></span>
+                            <div class="sheet-code">
+                                <span><b class="tk-k">def</b> <b class="tk-f">search</b>(arr, x):</span>
+                                <span>&nbsp;&nbsp;lo, hi = <b class="tk-n">0</b>, len(arr)</span>
+                                <span>&nbsp;&nbsp;<b class="tk-k">while</b> lo &lt; hi:</span>
+                            </div>
+                            <span class="sheet-line"></span><span class="sheet-line short"></span>
+                            <span class="sheet-num">3 / 12</span>
+                        </div>
+                        <figcaption>After</figcaption>
+                    </figure>
+                </div>
+
+                <ul class="demo-points" data-reveal>
+                    <li><svg class="i"><use href="#i-check"/></svg>Ads &amp; pop-ups removed</li>
+                    <li><svg class="i"><use href="#i-check"/></svg>Code highlighted</li>
+                    <li><svg class="i"><use href="#i-check"/></svg>Images embedded</li>
+                    <li><svg class="i"><use href="#i-check"/></svg>Clickable contents</li>
+                </ul>
+            </div>
+        </section>
+
         <!-- ─── How It Works ────────────────────────────────────── -->
         <section class="section section-alt" id="how-it-works">
             <div class="section-container">
-                <header class="section-header">
+                <header class="section-header" data-reveal>
                     <span class="section-tag">Simple process</span>
-                    <h2 class="section-title">How it works</h2>
+                    <h2 class="section-title">Three steps to a study pack</h2>
                     <p class="section-desc">Bring your sources together, let Page2PDF prepare them, then shape the final document your way.</p>
                 </header>
                 <div class="steps-grid">
-                    <article class="step-card">
+                    <article class="step-card" data-reveal>
                         <span class="step-number">01</span>
                         <span class="step-card-icon"><svg class="i i-lg"><use href="#i-link"/></svg></span>
                         <h3>Add your sources</h3>
                         <p>Paste one link or a whole list, upload PDFs and images, or drop them straight onto the workspace.</p>
                     </article>
-                    <article class="step-card">
+                    <article class="step-card" data-reveal style="--delay:.08s">
                         <span class="step-number">02</span>
                         <span class="step-card-icon"><svg class="i i-lg"><use href="#i-layers"/></svg></span>
                         <h3>Build the document</h3>
                         <p>Page2PDF extracts the useful content, embeds images, highlights code and merges everything in order.</p>
                     </article>
-                    <article class="step-card">
+                    <article class="step-card" data-reveal style="--delay:.16s">
                         <span class="step-number">03</span>
                         <span class="step-card-icon"><svg class="i i-lg"><use href="#i-download"/></svg></span>
                         <h3>Edit and export</h3>
@@ -442,37 +531,150 @@
             </div>
         </section>
 
-        <!-- ─── Features ────────────────────────────────────────── -->
+        <!-- ─── Features (bento) ────────────────────────────────── -->
         <section class="section" id="features">
             <div class="section-container">
-                <header class="section-header">
+                <header class="section-header" data-reveal>
                     <span class="section-tag">Features</span>
                     <h2 class="section-title">Built for learning</h2>
                     <p class="section-desc">Everything you need to save, organise and study online content offline.</p>
                 </header>
-                <div class="features-grid">
-                    <article class="feature-card" style="--tint:#6d5efc"><span class="feature-icon"><svg class="i"><use href="#i-code"/></svg></span><h3>Code blocks</h3><p>Syntax-highlighted code for every language Pygments supports.</p></article>
-                    <article class="feature-card" style="--tint:#a855f7"><span class="feature-icon"><svg class="i"><use href="#i-grid"/></svg></span><h3>Visual page editor</h3><p>Drag to reorder, rotate, duplicate and remove pages — with undo.</p></article>
-                    <article class="feature-card" style="--tint:#ec4899"><span class="feature-icon"><svg class="i"><use href="#i-image"/></svg></span><h3>PDFs &amp; images</h3><p>Merge your own files with web articles in any order you like.</p></article>
-                    <article class="feature-card" style="--tint:#10b981"><span class="feature-icon"><svg class="i"><use href="#i-book"/></svg></span><h3>Clickable contents</h3><p>Automatic or hand-written bookmarks and a linked contents page.</p></article>
-                    <article class="feature-card" style="--tint:#f59e0b"><span class="feature-icon"><svg class="i"><use href="#i-stamp"/></svg></span><h3>Numbers &amp; watermark</h3><p>Stamp page numbers and a subtle watermark on the final export.</p></article>
-                    <article class="feature-card" style="--tint:#06b6d4"><span class="feature-icon"><svg class="i"><use href="#i-shield"/></svg></span><h3>Private &amp; secure</h3><p>SSRF protection, optional AES-256 password, files auto-deleted.</p></article>
+
+                <div class="bento">
+                    <article class="bento-card bento-wide" data-reveal>
+                        <div class="bento-text">
+                            <span class="feature-icon" style="--tint:#a855f7"><svg class="i"><use href="#i-grid"/></svg></span>
+                            <h3>A visual page editor</h3>
+                            <p>See every page. Select a range with Shift-click, drag to reorder, rotate, duplicate or remove — and undo anything.</p>
+                        </div>
+                        <div class="mock-pages" aria-hidden="true">
+                            <span class="mp"><i></i><i></i><i></i></span>
+                            <span class="mp is-sel"><i></i><i></i><i></i><b>✓</b></span>
+                            <span class="mp is-sel is-rot"><i></i><i></i><i></i><b>✓</b></span>
+                            <span class="mp is-off"><i></i><i></i></span>
+                            <span class="mp"><i></i><i></i><i></i></span>
+                            <span class="mp mp-img"><em></em></span>
+                        </div>
+                    </article>
+
+                    <article class="bento-card" data-reveal style="--delay:.06s">
+                        <span class="feature-icon" style="--tint:#6d5efc"><svg class="i"><use href="#i-code"/></svg></span>
+                        <h3>Readable code</h3>
+                        <p>Syntax highlighting for every language Pygments knows.</p>
+                        <div class="mock-code" aria-hidden="true">
+                            <span><b class="tk-k">for</b> i <b class="tk-k">in</b> <b class="tk-f">range</b>(<b class="tk-n">10</b>):</span>
+                            <span>&nbsp;&nbsp;<b class="tk-f">print</b>(<b class="tk-s">"hi"</b>, i)</span>
+                        </div>
+                    </article>
+
+                    <article class="bento-card" data-reveal>
+                        <span class="feature-icon" style="--tint:#ec4899"><svg class="i"><use href="#i-layers"/></svg></span>
+                        <h3>Merge anything</h3>
+                        <p>Web articles, your own PDFs and images — one document, in your order.</p>
+                        <div class="mock-merge" aria-hidden="true">
+                            <span class="mm mm-web">WEB</span><span class="mm mm-pdf">PDF</span><span class="mm mm-img">IMG</span>
+                            <span class="mm-eq">→</span>
+                            <span class="mm mm-out"><svg class="i i-sm"><use href="#i-file"/></svg></span>
+                        </div>
+                    </article>
+
+                    <article class="bento-card" data-reveal style="--delay:.06s">
+                        <span class="feature-icon" style="--tint:#10b981"><svg class="i"><use href="#i-book"/></svg></span>
+                        <h3>Clickable contents</h3>
+                        <p>Automatic or hand-written bookmarks plus a linked contents page.</p>
+                        <ul class="mock-toc" aria-hidden="true">
+                            <li><span>Introduction</span><i></i><b>2</b></li>
+                            <li class="sub"><span>Classes</span><i></i><b>5</b></li>
+                            <li class="sub"><span>Inheritance</span><i></i><b>9</b></li>
+                        </ul>
+                    </article>
+
+                    <article class="bento-card" data-reveal style="--delay:.12s">
+                        <span class="feature-icon" style="--tint:#f59e0b"><svg class="i"><use href="#i-stamp"/></svg></span>
+                        <h3>Export polish</h3>
+                        <p>Page numbers, a watermark and an AES-256 password.</p>
+                        <div class="mock-opts" aria-hidden="true">
+                            <span><svg class="i i-sm"><use href="#i-hash"/></svg>Page numbers <i class="on"></i></span>
+                            <span><svg class="i i-sm"><use href="#i-lock"/></svg>Password <i class="on"></i></span>
+                        </div>
+                    </article>
+
+                    <article class="bento-card bento-half" data-reveal>
+                        <span class="feature-icon" style="--tint:#06b6d4"><svg class="i"><use href="#i-shield"/></svg></span>
+                        <div>
+                            <h3>Safe by design</h3>
+                            <p>Links to private networks are blocked, uploads are size-limited, and nothing is shared publicly.</p>
+                        </div>
+                    </article>
+
+                    <article class="bento-card bento-half" data-reveal style="--delay:.06s">
+                        <span class="feature-icon" style="--tint:#8b5cf6"><svg class="i"><use href="#i-moon"/></svg></span>
+                        <div>
+                            <h3>Made to feel good</h3>
+                            <p>Light and dark themes, keyboard shortcuts, and settings that are remembered between visits.</p>
+                        </div>
+                    </article>
                 </div>
             </div>
         </section>
 
         <!-- ─── About ───────────────────────────────────────────── -->
         <section class="section section-alt" id="about">
-            <div class="section-container about-content">
-                <span class="section-tag">About</span>
-                <h2 class="section-title">Why Page2PDF?</h2>
-                <p>As students, researchers and developers, we find valuable content scattered across the web. Bookmarks get lost, websites change, and reading on screens isn't always ideal.</p>
-                <p>Page2PDF extracts the meaningful content from any webpage — stripping away ads, navigation and pop-ups — and turns it into a beautifully formatted PDF for offline reading, printing or archiving.</p>
-                <div class="about-stats">
+            <div class="section-container about-grid">
+                <div class="about-content" data-reveal>
+                    <span class="section-tag">About</span>
+                    <h2 class="section-title">Why Page2PDF?</h2>
+                    <p>As students, researchers and developers, we find valuable content scattered across the web. Bookmarks get lost, websites change, and reading on screens isn't always ideal.</p>
+                    <p>Page2PDF extracts the meaningful content from any webpage — stripping away ads, navigation and pop-ups — and turns it into a beautifully formatted PDF for offline reading, printing or archiving.</p>
+                </div>
+                <div class="about-stats" data-reveal style="--delay:.1s">
                     <div class="stat"><span class="stat-value">3</span><span class="stat-label">Extraction strategies</span></div>
                     <div class="stat"><span class="stat-value">3</span><span class="stat-label">Source types</span></div>
                     <div class="stat"><span class="stat-value">20</span><span class="stat-label">Sources per collection</span></div>
+                    <div class="stat"><span class="stat-value">0</span><span class="stat-label">Ads in your PDF</span></div>
                 </div>
+            </div>
+        </section>
+
+        <!-- ─── FAQ ─────────────────────────────────────────────── -->
+        <section class="section" id="faq">
+            <div class="section-container faq-wrap">
+                <header class="section-header" data-reveal>
+                    <span class="section-tag">FAQ</span>
+                    <h2 class="section-title">Questions, answered</h2>
+                </header>
+                <div class="faq" data-reveal>
+                    <details>
+                        <summary>Is Page2PDF free?<svg class="i"><use href="#i-plus"/></svg></summary>
+                        <p>Yes. It's free and open source — you can use the hosted version or run it yourself with Docker.</p>
+                    </details>
+                    <details>
+                        <summary>Which websites work best?<svg class="i"><use href="#i-plus"/></svg></summary>
+                        <p>Public articles, tutorials, documentation and wikis. JavaScript-heavy pages are rendered in a real browser as a fallback. Pages behind a login or paywall can't be fetched.</p>
+                    </details>
+                    <details>
+                        <summary>Can I edit a PDF I already have?<svg class="i"><use href="#i-plus"/></svg></summary>
+                        <p>Yes. Upload it (or several) on its own or together with web links, then reorder, rotate, remove or duplicate pages in the editor.</p>
+                    </details>
+                    <details>
+                        <summary>How many sources can I combine?<svg class="i"><use href="#i-plus"/></svg></summary>
+                        <p>Up to 20 sources per collection, and up to 50&nbsp;MB per uploaded file by default. You can paste a whole list of links at once.</p>
+                    </details>
+                    <details>
+                        <summary>How does the password protection work?<svg class="i"><use href="#i-plus"/></svg></summary>
+                        <p>When you set a password in the export options, the downloaded file is encrypted with AES-256. Anyone opening it will need that password.</p>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─── CTA ─────────────────────────────────────────────── -->
+        <section class="cta-section" id="cta">
+            <div class="cta" data-reveal>
+                <div class="cta-glow" aria-hidden="true"></div>
+                <h2>Build your first study pack</h2>
+                <p>Paste a few links, drop in your notes, and download one clean PDF.</p>
+                <button class="btn btn-light btn-lg" id="cta-start-btn" type="button">Start now<svg class="i btn-arrow"><use href="#i-arrow-right"/></svg></button>
             </div>
         </section>
     </main>
@@ -480,10 +682,22 @@
     <!-- ─── Footer ──────────────────────────────────────────────── -->
     <footer class="footer">
         <div class="footer-container">
-            <span class="footer-logo">Page2PDF</span>
-            <p class="footer-tagline">Turn knowledge into portable documents.</p>
-            <p class="footer-copy">&copy; 2026 Page2PDF · Built for learners, by learners.</p>
+            <div class="footer-brand">
+                <span class="footer-logo">
+                    <svg viewBox="0 0 28 28" width="24" height="24" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="8" fill="var(--accent)"/><path d="M9 7.5h7l4.5 4.5v8.5a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2z" fill="#fff"/></svg>
+                    Page2PDF
+                </span>
+                <p class="footer-tagline">Turn knowledge into portable documents.</p>
+            </div>
+            <nav class="footer-links" aria-label="Footer">
+                <a href="#home">Workspace</a>
+                <a href="#showcase">Before &amp; after</a>
+                <a href="#how-it-works">How it works</a>
+                <a href="#features">Features</a>
+                <a href="#faq">FAQ</a>
+            </nav>
         </div>
+        <p class="footer-copy">&copy; 2026 Page2PDF · Built for learners, by learners.</p>
     </footer>
 
     <!-- ─── Modals ──────────────────────────────────────────────── -->
@@ -592,6 +806,6 @@
 
     <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
-    <script src="/static/js/app.js?v=10"></script>
+    <script src="/static/js/app.js?v=11"></script>
 </body>
 </html>

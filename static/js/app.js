@@ -167,6 +167,26 @@
             $('workspace').scrollIntoView({ behavior: 'smooth' });
         }
     }));
+    // Scroll reveal for the landing sections
+    const revealTargets = document.querySelectorAll('[data-reveal]');
+    if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add('is-visible');
+                io.unobserve(entry.target);
+            });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+        revealTargets.forEach((el) => io.observe(el));
+    } else {
+        revealTargets.forEach((el) => el.classList.add('is-visible'));
+    }
+
+    $('cta-start-btn').addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => $('url-input').focus({ preventScroll: true }), 450);
+    });
+
     const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 12);
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();

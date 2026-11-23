@@ -23,21 +23,15 @@ Built for students, researchers, programmers, and anyone who builds customized s
 
 ---
 
-## 🚀 How to Use It (User Guide)
+## 🚀 How to Use It
 
-If you are new to the application, here is how you use the Studio:
+> 📖 **Full manual:** see the **[User Guide](docs/USER_GUIDE.md)** for every feature, keyboard shortcuts, limits and troubleshooting.
 
-1. **Add Content:** 
-   - Paste a web URL (like a GeeksforGeeks tutorial) into the input box and click **Add URL**.
-   - Or, click **Upload Local PDF** to add an existing PDF from your laptop.
-2. **Generate:** Once you've added all your links and files, click **Generate All PDFs**. 
-3. **The Page Manager (Edit Mode):** 
-   - You will be taken to a grid showing every page of your new PDF book.
-   - **Delete:** Click a page to select it, then click "Remove Selected".
-   - **Rotate:** Click the small rotation icon on any page thumbnail to spin it 90 degrees.
-   - **Reorder:** Click and drag a page to move it to a different position.
-   - **Insert:** Click the "+ Insert PDF/Image" button at the top to add a new file exactly where you need it (e.g. after Page 50).
-4. **Download:** Click **Continue to Download** to get your final merged and edited PDF!
+1. **Add sources** — Paste a link and press **Enter** (paste a whole list to add many at once), or click **Upload PDFs or images**. You can also drag files onto the card. Reorder with drag-and-drop or the ↑/↓ buttons.
+2. **Adjust settings (optional)** — Open **PDF settings** for title, author, page size, fonts, contents page, cover page and separators.
+3. **Build** — Click **Build PDF**. Each source shows its progress; failed ones can be retried or skipped.
+4. **Edit pages** — Click pages to select them (Shift+Click for a range), then **Remove**, **Keep only**, **Rotate**, **Duplicate** or **Reverse**. Drag to reorder, use **Insert** to add more files or links, and **Index** for bookmarks. Undo/redo is available.
+5. **Export** — Click **Apply & continue**, preview the PDF, optionally add **page numbers**, a **watermark** or a **password**, choose a file name and click **Download PDF**.
 
 ---
 
