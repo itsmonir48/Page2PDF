@@ -16,6 +16,10 @@ Built for students, researchers, programmers, and anyone who builds customized s
 4. **Drag & Drop Reordering** — Visually drag thumbnail pages to reorder your entire PDF book.
 5. **Page Manipulation** — Rotate individual pages, delete ranges of pages, or insert new files directly in the middle of a document.
 6. **Code & Math Support** — Preserves syntax highlighting for code blocks and handles complex HTML structures.
+7. **Bulk Links** — Paste a whole list of URLs at once; drop files or links anywhere on the workspace card.
+8. **Visual Page Editor** — Multi-select (Shift+Click), duplicate, reverse, rotate, undo/redo and keyboard shortcuts.
+9. **Export Options** — Stamp page numbers, add a watermark, set the author and protect the PDF with an AES-256 password.
+10. **Live Preview & Themes** — Preview the final PDF before downloading; light and dark themes; settings are remembered.
 
 ---
 

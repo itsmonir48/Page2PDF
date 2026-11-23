@@ -157,7 +157,12 @@ class Collection(BaseModel):
     edited_pdf_filename: Optional[str] = None
     edited_total_pages: Optional[int] = None
     edited_size_mb: Optional[float] = None
-    
+
+    # Final export (page numbers / watermark / password applied)
+    export_pdf_filename: Optional[str] = None
+    export_size_mb: Optional[float] = None
+    export_protected: bool = False
+
     error: Optional[str] = None
 
 
@@ -185,6 +190,7 @@ class CollectionGenerateRequest(BaseModel):
 
 class CollectionMergeRequest(BaseModel):
     title: Optional[str] = None
+    author: Optional[str] = Field(None, max_length=200)
     add_cover_page: bool = Field(False)
     add_source_separator: bool = Field(False)
     generate_toc: bool = Field(True)
@@ -193,6 +199,11 @@ class CollectionMergeRequest(BaseModel):
 class EditPagesRequest(BaseModel):
     keep_pages: List[int] = Field(..., description="0-indexed list of pages to keep in the final PDF, in desired order")
     rotations: Optional[Dict[int, int]] = Field(None, description="Map of page index to rotation degrees (90, 180, 270)")
+    rotations_by_position: Optional[List[int]] = Field(
+        None,
+        description="Extra rotation for each output page, aligned with keep_pages. "
+                    "Takes precedence over `rotations` and supports duplicated pages.",
+    )
 
 
 class IndexEntry(BaseModel):
@@ -205,6 +216,22 @@ class EditIndexRequest(BaseModel):
     enabled: bool = True
     automatic: bool = True
     entries: List[IndexEntry] = Field(default_factory=list)
+
+
+class PageNumberPosition(str, Enum):
+    BOTTOM_CENTER = "bottom-center"
+    BOTTOM_RIGHT = "bottom-right"
+    TOP_RIGHT = "top-right"
+
+
+class FinalizeRequest(BaseModel):
+    page_numbers: bool = False
+    page_number_position: PageNumberPosition = PageNumberPosition.BOTTOM_CENTER
+    skip_first_page: bool = True
+    watermark: Optional[str] = Field(None, max_length=60)
+    watermark_opacity: float = Field(0.12, ge=0.03, le=0.6)
+    password: Optional[str] = Field(None, max_length=64)
+    author: Optional[str] = Field(None, max_length=200)
 
 
 class CollectionResponse(BaseModel):

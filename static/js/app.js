@@ -1,1342 +1,1520 @@
 /**
- * Page2PDF — Frontend Application
- * Handles multi-URL collections, API communication, drag-and-drop, and downloads.
+ * Page2PDF Studio — Frontend
+ * Sources → Build → Edit pages → Export.
+ * All user/remote text is rendered with textContent or escaped; no inline handlers.
  */
-
 (function () {
     'use strict';
 
-    // ── DOM Elements ────────────────────────────────────────────
-    const urlInput = document.getElementById('url-input');
-    const addUrlBtn = document.getElementById('add-url-btn');
-    const errorMessage = document.getElementById('error-message');
-    const urlListContainer = document.getElementById('url-list-container');
-    const urlList = document.getElementById('url-list');
-    const generateAllBtn = document.getElementById('generate-all-btn');
-    
-    const settingsToggle = document.getElementById('settings-toggle');
-    const settingsPanel = document.getElementById('settings-panel');
-    const progressSection = document.getElementById('progress-section');
-    const heroSection = document.getElementById('home');
-    
-    const progressTitle = document.getElementById('progress-title');
-    const progressSubtitle = document.getElementById('progress-subtitle');
-    const progressBarFill = document.getElementById('progress-bar-fill');
-    const progressPercent = document.getElementById('progress-percent');
-    const progressSpinner = document.getElementById('progress-spinner');
-    const progressCheck = document.getElementById('progress-check');
-    const progressSteps = document.getElementById('progress-steps');
-    
-    const downloadSection = document.getElementById('download-section');
-    const dlSources = document.getElementById('dl-sources');
-    const dlPages = document.getElementById('dl-pages');
-    const dlSize = document.getElementById('dl-size');
-    const downloadFilename = document.getElementById('download-filename');
-    const downloadBtn = document.getElementById('download-btn');
-    const individualDownloadsList = document.getElementById('individual-downloads-list');
-    const newBtn = document.getElementById('new-btn');
-    const errorSection = document.getElementById('error-section');
-    const errorDetail = document.getElementById('error-detail');
-    const retryBtn = document.getElementById('retry-btn');
-    const navToggle = document.getElementById('nav-toggle');
-    const navLinks = document.querySelector('.nav-links');
-    
-    // Page Management Elements
-    const pmSection = document.getElementById('page-management-section');
-    const pmTotal = document.getElementById('pm-total');
-    const pmKept = document.getElementById('pm-kept');
-    const pmRemoved = document.getElementById('pm-removed');
-    const pmThumbnailsGrid = document.getElementById('pm-thumbnails-grid');
-    const pmBtnRemoveLast = document.getElementById('pm-btn-remove-last');
-    const pmBtnSelectAll = document.getElementById('pm-btn-select-all');
-    const pmBtnRemoveSelected = document.getElementById('pm-btn-remove-selected');
-    const pmBtnKeepSelected = document.getElementById('pm-btn-keep-selected');
-    const pmBtnRestoreAll = document.getElementById('pm-btn-restore-all');
-    const pmBtnInsertFile = document.getElementById('pm-btn-insert-file');
-    const pmBtnIndex = document.getElementById('pm-btn-index');
-    const indexModal = document.getElementById('index-modal');
-    const closeIndexModal = document.getElementById('close-index-modal');
-    const indexAutomaticBtn = document.getElementById('index-automatic-btn');
-    const indexManualBtn = document.getElementById('index-manual-btn');
-    const indexOffBtn = document.getElementById('index-off-btn');
-    const indexModeHelp = document.getElementById('index-mode-help');
-    const indexEntriesInput = document.getElementById('index-entries-input');
-    const indexErrorMessage = document.getElementById('index-error-message');
-    const indexApplyBtn = document.getElementById('index-apply-btn');
-    const insertFileModal = document.getElementById('insert-file-modal');
-    const closeInsertModal = document.getElementById('close-insert-modal');
-    const insertFileInput = document.getElementById('insert-file-input');
-    const insertFileDropZone = document.getElementById('insert-file-drop-zone');
-    const insertUrlInput = document.getElementById('insert-url-input');
-    const insertPositionSelect = document.getElementById('insert-position-select');
-    const insertPageNumberContainer = document.getElementById('insert-page-number-container');
-    const insertPageNumber = document.getElementById('insert-page-number');
-    const btnConfirmInsert = document.getElementById('btn-confirm-insert');
-    const insertErrorMessage = document.getElementById('insert-error-message');
-    
-    const pmRangeInput = document.getElementById('pm-range-input');
-    const pmBtnApplyRange = document.getElementById('pm-btn-apply-range');
-    const pmErrorMessage = document.getElementById('pm-error-message');
-    const pmBtnPreview = document.getElementById('pm-btn-preview');
-    const pmBtnContinue = document.getElementById('pm-btn-continue');
-    const editDownloadBtn = document.getElementById('edit-download-btn');
-    
-    let totalPagesCount = 0;
-    let pageStates = []; // true = keep, false = remove
-    let pageSelections = []; // true = selected in UI, false = not selected
-    let pageRotations = {}; // originalPageIndex -> degrees (90, 180, 270)
-    let pageOrder = []; // array of original page indices in current order
-    let indexMode = 'automatic';
-    let indexEnabled = true;
+    // ── Helpers ─────────────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+    const icon = (name, cls = '') => `<svg class="i ${cls}"><use href="#i-${name}"/></svg>`;
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const formatMb = (mb) => (mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(mb * 1024))} KB`);
+    const storage = {
+        get(key, fallback) {
+            try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); } catch (e) { return fallback; }
+        },
+        set(key, value) {
+            try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode */ }
+        },
+    };
 
-    // Settings
-    const settingTitle = document.getElementById('setting-title');
-    const settingAuthor = document.getElementById('setting-author');
-    const settingPageSize = document.getElementById('setting-page-size');
-    const settingFontSize = document.getElementById('setting-font-size');
-    const settingFontFamily = document.getElementById('setting-font-family');
-    const settingImages = document.getElementById('setting-images');
-    const settingLinks = document.getElementById('setting-links');
-    const settingToc = document.getElementById('setting-toc');
-    const settingCode = document.getElementById('setting-code');
-    const settingCover = document.getElementById('setting-cover');
-    const settingSeparator = document.getElementById('setting-separator');
-    
-    // Modal Elements
-    const imageModal = document.getElementById('image-modal');
-    const modalImg = document.getElementById('modal-img');
-    const closeModalBtn = document.getElementById('close-modal');
-    const modalLoader = document.getElementById('modal-loader');
+    class SessionExpiredError extends Error {}
 
-    let currentCollectionId = null;
-    let pollInterval = null;
-    let collectionItems = []; // Local cache of items for rendering
-    let thumbnailVersion = Date.now();
+    async function api(path, { method = 'GET', json, form } = {}) {
+        const init = { method };
+        if (json !== undefined) {
+            init.headers = { 'Content-Type': 'application/json' };
+            init.body = JSON.stringify(json);
+        } else if (form) {
+            init.body = form;
+        }
+        let res;
+        try {
+            res = await fetch(path, init);
+        } catch (e) {
+            throw new Error('Network error — check your connection and try again.');
+        }
+        if (res.status === 404 && path.startsWith('/api/collections/')) {
+            throw new SessionExpiredError('This session has expired (the server may have restarted). Please start a new collection.');
+        }
+        let data = null;
+        try { data = await res.json(); } catch (e) { /* non-JSON */ }
+        if (!res.ok) {
+            const detail = data && (data.error || (typeof data.detail === 'string' ? data.detail : null));
+            throw new Error(detail || `Request failed (${res.status}).`);
+        }
+        if (data && data.success === false) throw new Error(data.error || 'Something went wrong.');
+        return data;
+    }
 
-    // ── Navigation & Setup ──────────────────────────────────────
+    function setLoading(button, loading, label) {
+        if (!button) return;
+        button.disabled = loading;
+        button.classList.toggle('is-loading', loading);
+        const text = button.querySelector('.btn-text');
+        if (text && label !== undefined) text.textContent = label;
+    }
+
+    // ── Toasts ──────────────────────────────────────────────────
+    const toastStack = $('toast-stack');
+    function toast(message, type = 'info', { action, onAction, duration = 4200 } = {}) {
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        const iconName = type === 'success' ? 'check' : type === 'error' ? 'alert' : 'alert';
+        el.innerHTML = `${icon(iconName)}<span></span>`;
+        el.querySelector('span').textContent = message;
+        if (action) {
+            const btn = document.createElement('button');
+            btn.className = 'toast-action';
+            btn.type = 'button';
+            btn.textContent = action;
+            btn.addEventListener('click', () => { onAction && onAction(); dismiss(); });
+            el.appendChild(btn);
+        }
+        toastStack.appendChild(el);
+        let timer = setTimeout(dismiss, duration);
+        el.addEventListener('mouseenter', () => clearTimeout(timer));
+        el.addEventListener('mouseleave', () => { timer = setTimeout(dismiss, 1800); });
+        function dismiss() {
+            if (!el.isConnected) return;
+            el.classList.add('leaving');
+            setTimeout(() => el.remove(), 250);
+        }
+        while (toastStack.children.length > 3) toastStack.firstElementChild.remove();
+    }
+
+    // ── Modals ──────────────────────────────────────────────────
+    const openModals = [];
+    function openModal(el) {
+        el.hidden = false;
+        openModals.push({ el, returnFocus: document.activeElement });
+        const focusable = el.querySelector('input:not([hidden]), textarea:not([hidden]), button:not([data-close-modal])');
+        setTimeout(() => focusable && focusable.focus(), 30);
+    }
+    function closeModal(el) {
+        const idx = openModals.findIndex((m) => m.el === el);
+        if (idx === -1) return;
+        const [entry] = openModals.splice(idx, 1);
+        el.hidden = true;
+        if (el.onclose) el.onclose();
+        if (entry.returnFocus && entry.returnFocus.focus) entry.returnFocus.focus();
+    }
+    function closeTopModal() {
+        const top = openModals[openModals.length - 1];
+        if (top) closeModal(top.el);
+        return Boolean(top);
+    }
+    document.querySelectorAll('.modal, .lightbox').forEach((modal) => {
+        modal.addEventListener('mousedown', (e) => { if (e.target === modal) closeModal(modal); });
+        modal.querySelectorAll('[data-close-modal]').forEach((btn) => btn.addEventListener('click', () => closeModal(modal)));
+    });
+
+    function confirmDialog({ title, body, ok = 'Continue', cancel = 'Cancel' }) {
+        const modal = $('confirm-modal');
+        $('confirm-title').textContent = title;
+        $('confirm-body').textContent = body;
+        $('confirm-ok').textContent = ok;
+        $('confirm-cancel').textContent = cancel;
+        return new Promise((resolve) => {
+            let result = false;
+            const okBtn = $('confirm-ok');
+            const cancelBtn = $('confirm-cancel');
+            const onOk = () => { result = true; closeModal(modal); };
+            const onCancel = () => closeModal(modal);
+            okBtn.addEventListener('click', onOk, { once: true });
+            cancelBtn.addEventListener('click', onCancel, { once: true });
+            modal.onclose = () => {
+                okBtn.removeEventListener('click', onOk);
+                cancelBtn.removeEventListener('click', onCancel);
+                modal.onclose = null;
+                resolve(result);
+            };
+            openModal(modal);
+            setTimeout(() => okBtn.focus(), 40);
+        });
+    }
+
+    // ── Theme ───────────────────────────────────────────────────
+    $('theme-toggle').addEventListener('click', () => {
+        const root = document.documentElement;
+        const current = root.dataset.theme
+            || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        const next = current === 'light' ? 'dark' : 'light';
+        root.dataset.theme = next;
+        try { localStorage.setItem('p2p-theme', next); } catch (e) { /* ignore */ }
+    });
+
+    // ── Navigation ──────────────────────────────────────────────
+    const navbar = $('navbar');
+    const navLinks = $('nav-links');
+    const navToggle = $('nav-toggle');
     navToggle.addEventListener('click', () => {
-        navLinks.classList.toggle('open');
+        const open = navLinks.classList.toggle('open');
+        navToggle.setAttribute('aria-expanded', String(open));
     });
+    navLinks.querySelectorAll('a').forEach((link) => link.addEventListener('click', (e) => {
+        navLinks.classList.remove('open');
+        navToggle.setAttribute('aria-expanded', 'false');
+        if (document.body.classList.contains('is-working')) {
+            // The landing sections are hidden while working; jump back to the workspace instead.
+            e.preventDefault();
+            $('workspace').scrollIntoView({ behavior: 'smooth' });
+        }
+    }));
+    const onScroll = () => navbar.classList.toggle('scrolled', window.scrollY > 12);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
 
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', () => navLinks.classList.remove('open'));
-    });
+    // ── Settings (persisted) ────────────────────────────────────
+    const settings = {
+        title: $('setting-title'),
+        author: $('setting-author'),
+        pageSize: $('setting-page-size'),
+        fontSize: $('setting-font-size'),
+        fontFamily: $('setting-font-family'),
+        images: $('setting-images'),
+        links: $('setting-links'),
+        toc: $('setting-toc'),
+        code: $('setting-code'),
+        cover: $('setting-cover'),
+        separator: $('setting-separator'),
+    };
+    const PERSISTED = ['author', 'pageSize', 'fontSize', 'fontFamily', 'images', 'links', 'toc', 'code', 'cover', 'separator'];
+    (function restoreSettings() {
+        const saved = storage.get('p2p-settings', {});
+        PERSISTED.forEach((key) => {
+            if (!(key in saved)) return;
+            const el = settings[key];
+            if (el.type === 'checkbox') el.checked = Boolean(saved[key]);
+            else el.value = saved[key];
+        });
+    })();
+    function saveSettings() {
+        const out = {};
+        PERSISTED.forEach((key) => {
+            const el = settings[key];
+            out[key] = el.type === 'checkbox' ? el.checked : el.value;
+        });
+        storage.set('p2p-settings', out);
+    }
+    PERSISTED.forEach((key) => settings[key].addEventListener('change', saveSettings));
+    settings.author.addEventListener('input', saveSettings);
 
+    const settingsToggle = $('settings-toggle');
+    const settingsPanel = $('settings-panel');
     settingsToggle.addEventListener('click', () => {
-        settingsToggle.classList.toggle('active');
-        settingsPanel.classList.toggle('open');
+        const open = settingsPanel.classList.toggle('open');
+        settingsToggle.setAttribute('aria-expanded', String(open));
     });
 
-    document.querySelectorAll('.example-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            urlInput.value = chip.dataset.url;
-            urlInput.focus();
-            clearError();
-        });
-    });
-
-    const pdfUploadInput = document.getElementById('pdf-upload-input');
-    const uploadDropZone = document.getElementById('upload-pdf-btn');
-
-    urlInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addUrlToCollection();
-        }
-    });
-
-    urlInput.addEventListener('input', clearError);
-    addUrlBtn.addEventListener('click', addUrlToCollection);
-    generateAllBtn.addEventListener('click', startGeneration);
-    uploadDropZone.addEventListener('click', () => pdfUploadInput.click());
-    
-    const supportedFilePattern = /\.(pdf|png|jpe?g|webp)$/i;
-
-    pdfUploadInput.addEventListener('change', async (e) => {
-        await uploadFilesToCollection(Array.from(e.target.files || []));
-        e.target.value = '';
-    });
-
-    ['dragenter', 'dragover'].forEach(eventName => {
-        uploadDropZone.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            uploadDropZone.classList.add('drag-over');
-        });
-    });
-    ['dragleave', 'drop'].forEach(eventName => {
-        uploadDropZone.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            uploadDropZone.classList.remove('drag-over');
-        });
-    });
-    uploadDropZone.addEventListener('drop', async (e) => {
-        const files = Array.from(e.dataTransfer.files || []);
-        if (files.length) {
-            await uploadFilesToCollection(files);
-            return;
-        }
-        const droppedUrl = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
-        if (droppedUrl && /^https?:\/\//i.test(droppedUrl.trim())) {
-            urlInput.value = droppedUrl.trim();
-            await addUrlToCollection();
-        }
-    });
-
-    async function uploadFilesToCollection(files) {
-        const invalidFile = files.find(file => {
-            const validExtension = supportedFilePattern.test(file.name);
-            const validType = file.type === 'application/pdf' || file.type.startsWith('image/');
-            return !validExtension || !validType;
-        });
-        if (invalidFile) {
-            showError('Only PDF, PNG, JPG, JPEG, and WEBP files are supported.');
-            return;
-        }
-        if (!files.length || !(await ensureCollection())) {
-            showError('Failed to initialize collection. Please try again.');
-            return;
-        }
-
-        for (const file of files) {
-            const tempId = 'upload_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-            collectionItems.push({ id: tempId, url: `local://${file.name}`, title: 'Uploading...', status: 'queued' });
-            renderUrlList();
-            const formData = new FormData();
-            formData.append('file', file);
-            try {
-                const res = await fetch(`/api/collections/${currentCollectionId}/upload`, { method: 'POST', body: formData });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error || 'Upload failed.');
-                collectionItems = data.collection.items;
-            } catch (err) {
-                showError(err.message || 'Upload failed due to a network error.');
-                collectionItems = collectionItems.filter(item => item.id !== tempId);
-            }
-            renderUrlList();
-        }
+    function generationOptions() {
+        return {
+            page_size: settings.pageSize.value,
+            font_size: settings.fontSize.value,
+            font_family: settings.fontFamily.value,
+            include_images: settings.images.checked,
+            include_links: settings.links.checked,
+            include_toc: settings.toc.checked,
+            include_code: settings.code.checked,
+        };
     }
+    const documentTitle = () => settings.title.value.trim() || 'Study Material Collection';
 
-    newBtn.addEventListener('click', resetToHome);
-    retryBtn.addEventListener('click', () => {
-        errorSection.classList.remove('active');
-        progressSection.classList.remove('active');
-        heroSection.style.display = '';
-        document.querySelector('.how-it-works').style.display = '';
-        document.querySelector('.features').style.display = '';
-        document.querySelector('.about').style.display = '';
-    });
-    
-    // Page Management Events
-    pmBtnRemoveLast.addEventListener('click', () => {
-        if (totalPagesCount > 0) {
-            let lastIdx = -1;
-            for(let i = pageStates.length - 1; i >= 0; i--) {
-                if (pageStates[i]) {
-                    lastIdx = i;
-                    break;
-                }
-            }
-            if (lastIdx !== -1) {
-                pageStates[lastIdx] = false;
-                updatePmUI();
-            }
-        }
-    });
-    
-    pmBtnSelectAll.addEventListener('click', (e) => {
-        e.preventDefault();
-        console.log("Select All clicked. totalPagesCount:", totalPagesCount);
-        
-        let allSelected = true;
-        for(let i = 0; i < totalPagesCount; i++) {
-            if (pageStates[i] && !pageSelections[i]) {
-                allSelected = false;
-                break;
-            }
-        }
-        
-        console.log("Currently allSelected?", allSelected);
-        
-        for(let i = 0; i < totalPagesCount; i++) {
-            if (pageStates[i]) {
-                pageSelections[i] = !allSelected;
-            }
-        }
-        
-        updatePmUI();
-    });
-    
-    pmBtnRemoveSelected.addEventListener('click', () => {
-        for(let i = 0; i < totalPagesCount; i++) {
-            if (pageSelections[i]) {
-                pageStates[i] = false;
-                pageSelections[i] = false;
-            }
-        }
-        updatePmUI();
-    });
-    
-    pmBtnKeepSelected.addEventListener('click', () => {
-        let hasSelection = pageSelections.some(s => s);
-        if(!hasSelection) return;
-        
-        for(let i = 0; i < totalPagesCount; i++) {
-            if (pageSelections[i]) {
-                pageStates[i] = true;
-                pageSelections[i] = false;
-            } else {
-                pageStates[i] = false;
-            }
-        }
-        updatePmUI();
-    });
-    
-    pmBtnRestoreAll.addEventListener('click', () => {
-        for(let i = 0; i < totalPagesCount; i++) {
-            pageStates[i] = true;
-            pageSelections[i] = false;
-        }
-        pmRangeInput.value = '';
-        pmErrorMessage.textContent = '';
-        updatePmUI();
-    });
+    // ── State ───────────────────────────────────────────────────
+    let collectionId = null;
+    let collection = null;
+    let items = [];          // server items
+    let pending = [];        // client-side placeholders while adding/uploading
+    let pollTimer = null;
+    let thumbVersion = Date.now();
 
-    // Insert File Modal Events
-    pmBtnIndex.addEventListener('click', () => {
-        indexModal.style.display = 'flex';
-        indexMode = 'automatic';
-        indexEnabled = true;
-        indexEntriesInput.style.display = 'none';
-        indexErrorMessage.textContent = '';
-        indexModeHelp.textContent = 'Keep the existing source bookmarks and headings.';
-        updateIndexModeButtons();
-    });
-    closeIndexModal.addEventListener('click', () => { indexModal.style.display = 'none'; });
-    indexAutomaticBtn.addEventListener('click', () => {
-        indexMode = 'automatic';
-        indexEnabled = true;
-        indexEntriesInput.style.display = 'none';
-        indexModeHelp.textContent = 'Keep the existing source bookmarks and headings.';
-        updateIndexModeButtons();
-    });
-    indexManualBtn.addEventListener('click', () => {
-        indexMode = 'manual';
-        indexEnabled = true;
-        indexEntriesInput.style.display = 'block';
-        indexModeHelp.textContent = 'One entry per line: Title | page number | level (level is optional).';
-        updateIndexModeButtons();
-    });
-    indexOffBtn.addEventListener('click', () => {
-        indexMode = 'automatic';
-        indexEnabled = false;
-        indexEntriesInput.style.display = 'none';
-        indexModeHelp.textContent = 'Remove all clickable index/bookmark entries from the PDF.';
-        updateIndexModeButtons();
-    });
+    // ── Sources ─────────────────────────────────────────────────
+    const urlInput = $('url-input');
+    const addUrlBtn = $('add-url-btn');
+    const errorMessage = $('error-message');
+    const sourceListWrap = $('url-list-container');
+    const sourceList = $('url-list');
+    const sourceCount = $('source-count');
+    const buildBtn = $('generate-all-btn');
+    const composer = $('composer');
+    const fileInput = $('pdf-upload-input');
+    const uploadBtn = $('upload-pdf-btn');
+    const SUPPORTED_FILE = /\.(pdf|png|jpe?g|webp)$/i;
+    const URL_PATTERN = /\bhttps?:\/\/[^\s<>"'`]+/gi;
 
-    function updateIndexModeButtons() {
-        [indexOffBtn, indexAutomaticBtn, indexManualBtn].forEach(button => button.classList.remove('active'));
-        if (!indexEnabled) indexOffBtn.classList.add('active');
-        else if (indexMode === 'manual') indexManualBtn.classList.add('active');
-        else indexAutomaticBtn.classList.add('active');
-    }
-    indexApplyBtn.addEventListener('click', async () => {
-        const entries = [];
-        if (indexMode === 'manual') {
-            const lines = indexEntriesInput.value.split('\n').map(line => line.trim()).filter(Boolean);
-            for (const line of lines) {
-                const parts = line.split('|').map(part => part.trim());
-                const page = Number(parts[1]);
-                const level = parts[2] ? Number(parts[2]) : 1;
-                if (!parts[0] || !Number.isInteger(page) || page < 1 || page > totalPagesCount || !Number.isInteger(level) || level < 1 || level > 3) {
-                    indexErrorMessage.textContent = `Invalid entry: ${line}`;
-                    return;
-                }
-                entries.push({ title: parts[0], page, level });
-            }
-            if (!entries.length) {
-                indexErrorMessage.textContent = 'Add at least one manual index entry.';
-                return;
-            }
-        }
-        indexApplyBtn.disabled = true;
-        indexErrorMessage.textContent = '';
-        try {
-            const response = await fetch(`/api/collections/${currentCollectionId}/edit-index`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabled: indexEnabled, automatic: indexMode === 'automatic', entries })
-            });
-            const data = await response.json();
-            if (!data.success) throw new Error(data.error || 'Failed to apply index.');
-            indexModal.style.display = 'none';
-            showCompleted(data.collection);
-        } catch (error) {
-            indexErrorMessage.textContent = error.message || 'Failed to apply index.';
-        } finally {
-            indexApplyBtn.disabled = false;
-        }
-    });
-
-    // Insert File Modal Events
-    pmBtnInsertFile.addEventListener('click', () => {
-        insertFileModal.style.display = 'flex';
-        insertErrorMessage.textContent = '';
-        insertFileInput.value = '';
-        insertUrlInput.value = '';
-        insertFileDropZone.childNodes[0].textContent = 'Drop a PDF or image here, or click to browse';
-        insertPositionSelect.value = 'end';
-        insertPageNumberContainer.style.display = 'none';
-        insertPageNumber.value = '';
-    });
-    
-    closeInsertModal.addEventListener('click', () => {
-        insertFileModal.style.display = 'none';
-    });
-    
-    insertPositionSelect.addEventListener('change', (e) => {
-        if (e.target.value === 'after') {
-            insertPageNumberContainer.style.display = 'block';
-        } else {
-            insertPageNumberContainer.style.display = 'none';
-        }
-    });
-
-    insertFileDropZone.addEventListener('click', () => insertFileInput.click());
-    ['dragenter', 'dragover'].forEach(eventName => {
-        insertFileDropZone.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            insertFileDropZone.classList.add('drag-over');
-        });
-    });
-    ['dragleave', 'drop'].forEach(eventName => {
-        insertFileDropZone.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            insertFileDropZone.classList.remove('drag-over');
-        });
-    });
-    insertFileDropZone.addEventListener('drop', (e) => {
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            insertFileInput.files = e.dataTransfer.files;
-            insertFileDropZone.childNodes[0].textContent = file.name;
-        }
-    });
-    insertFileInput.addEventListener('change', () => {
-        const file = insertFileInput.files[0];
-        if (file) insertFileDropZone.childNodes[0].textContent = file.name;
-    });
-    
-    btnConfirmInsert.addEventListener('click', async () => {
-        const file = insertFileInput.files[0];
-        const url = insertUrlInput.value.trim();
-        if (!file && !url) {
-            insertErrorMessage.textContent = 'Select a PDF/image or enter a webpage link.';
-            return;
-        }
-        if (file && url) {
-            insertErrorMessage.textContent = 'Choose either a file or a link, not both.';
-            return;
-        }
-        
-        const position = insertPositionSelect.value;
-        const pageIndexStr = insertPageNumber.value;
-        let pageIndex = 0;
-        
-        if (position === 'after') {
-            pageIndex = parseInt(pageIndexStr);
-            if (isNaN(pageIndex) || pageIndex < 1 || pageIndex > totalPagesCount) {
-                insertErrorMessage.textContent = 'Please enter a valid page number (1 to ' + totalPagesCount + ').';
-                return;
-            }
-            // 0-indexed adjustment for backend
-            pageIndex = pageIndex - 1; 
-        }
-        
-        btnConfirmInsert.disabled = true;
-        btnConfirmInsert.querySelector('.btn-text').textContent = 'Inserting...';
-        insertErrorMessage.textContent = '';
-        
-        const formData = new FormData();
-        if (file) formData.append('file', file);
-        if (url) formData.append('url', url);
-        formData.append('position', position);
-        formData.append('page_index', pageIndex);
-        
-        try {
-            const res = await fetch(`/api/collections/${currentCollectionId}/insert-file`, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            
-            if (data.success) {
-                insertFileModal.style.display = 'none';
-                showCompleted(data.collection);
-            } else {
-                insertErrorMessage.textContent = data.error || 'Failed to insert file.';
-            }
-        } catch (err) {
-            insertErrorMessage.textContent = 'Network error occurred.';
-        } finally {
-            btnConfirmInsert.disabled = false;
-            btnConfirmInsert.querySelector('.btn-text').textContent = 'Insert File or Link';
-        }
-    });
-    
-    pmBtnApplyRange.addEventListener('click', applyCustomRange);
-    pmBtnPreview.addEventListener('click', applyPageEdits);
-    pmBtnContinue.addEventListener('click', () => {
-        pmSection.style.display = 'none';
-        downloadSection.classList.add('active');
-    });
-    editDownloadBtn.addEventListener('click', () => {
-        downloadSection.classList.remove('active');
-        pmSection.style.display = 'block';
-        pmSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-    
-    // Modal Events
-    closeModalBtn.addEventListener('click', () => {
-        imageModal.style.display = 'none';
-        modalImg.src = '';
-    });
-    imageModal.addEventListener('click', (e) => {
-        if(e.target === imageModal) {
-            imageModal.style.display = 'none';
-            modalImg.src = '';
-        }
-    });
-
-    // ── Utility ─────────────────────────────────────────────────
-
-    function clearError() {
-        errorMessage.textContent = '';
-    }
-
-    function showError(msg) {
-        errorMessage.textContent = msg;
-    }
+    const showError = (msg) => { errorMessage.textContent = msg || ''; };
 
     function normalizeUrl(url) {
-        url = url.trim();
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            url = 'https://' + url;
-        }
+        url = url.trim().replace(/[),.;]+$/, '');
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
         return url;
     }
 
-    // ── Collection Management ───────────────────────────────────
-
-    async function ensureCollection() {
-        if (currentCollectionId) return true;
-        
-        try {
-            const res = await fetch('/api/collections', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: settingTitle.value.trim() || 'Study Material Collection' })
-            });
-            const data = await res.json();
-            if (data.success) {
-                currentCollectionId = data.collection.id;
-                return true;
-            }
-            return false;
-        } catch (e) {
-            console.error('Failed to create collection', e);
-            return false;
-        }
+    function parseUrls(text) {
+        const found = text.match(URL_PATTERN);
+        if (found && found.length) return [...new Set(found.map(normalizeUrl))];
+        const parts = text.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+        return [...new Set(parts.map(normalizeUrl))];
     }
 
-    async function addUrlToCollection() {
-        const rawUrl = urlInput.value.trim();
-        if (!rawUrl) {
-            showError('Please enter a webpage URL.');
+    async function ensureCollection() {
+        if (collectionId) return;
+        const data = await api('/api/collections', { method: 'POST', json: { title: documentTitle() } });
+        collectionId = data.collection.id;
+        collection = data.collection;
+    }
+
+    function syncFromServer(col) {
+        collection = col;
+        items = col.items;
+        renderSources();
+    }
+
+    async function addUrls(urls) {
+        if (!urls.length) return;
+        showError('');
+        try {
+            await ensureCollection();
+        } catch (e) {
+            showError(e.message);
+            return;
+        }
+        let added = 0;
+        const failures = [];
+        for (const url of urls) {
+            const temp = { id: 'tmp_' + Math.random().toString(36).slice(2), url, title: 'Fetching page title…', pending: true };
+            pending.push(temp);
+            renderSources();
+            try {
+                const data = await api(`/api/collections/${collectionId}/urls`, { method: 'POST', json: { url } });
+                pending = pending.filter((p) => p !== temp);
+                syncFromServer(data.collection);
+                added++;
+            } catch (e) {
+                pending = pending.filter((p) => p !== temp);
+                renderSources();
+                if (e instanceof SessionExpiredError) { resetAll(); toast(e.message, 'error'); return; }
+                failures.push(`${url}: ${e.message}`);
+            }
+        }
+        if (failures.length === 1 && urls.length === 1) showError(failures[0].split(': ').slice(1).join(': '));
+        else if (failures.length) showError(`${failures.length} link(s) could not be added. ${failures[0]}`);
+        if (added > 1) toast(`Added ${added} links`, 'success');
+    }
+
+    async function addFromInput() {
+        const raw = urlInput.value.trim();
+        if (!raw) {
+            showError('Paste a webpage link first.');
             urlInput.focus();
             return;
         }
-
-        const url = normalizeUrl(rawUrl);
-        clearError();
+        const urls = parseUrls(raw);
+        urlInput.value = '';
         addUrlBtn.disabled = true;
+        await addUrls(urls);
+        addUrlBtn.disabled = false;
+        urlInput.focus();
+    }
 
-        if (!(await ensureCollection())) {
-            showError('Failed to initialize collection. Please try again.');
-            addUrlBtn.disabled = false;
+    async function uploadFiles(files) {
+        const valid = files.filter((f) => SUPPORTED_FILE.test(f.name));
+        if (valid.length !== files.length) {
+            showError('Only PDF, PNG, JPG and WEBP files are supported.');
+            if (!valid.length) return;
+        } else {
+            showError('');
+        }
+        try {
+            await ensureCollection();
+        } catch (e) {
+            showError(e.message);
             return;
         }
+        for (const file of valid) {
+            const temp = { id: 'tmp_' + Math.random().toString(36).slice(2), url: `local://${file.name}`, title: file.name, pending: true, uploading: true };
+            pending.push(temp);
+            renderSources();
+            const form = new FormData();
+            form.append('file', file);
+            try {
+                const data = await api(`/api/collections/${collectionId}/upload`, { method: 'POST', form });
+                pending = pending.filter((p) => p !== temp);
+                syncFromServer(data.collection);
+            } catch (e) {
+                pending = pending.filter((p) => p !== temp);
+                renderSources();
+                if (e instanceof SessionExpiredError) { resetAll(); toast(e.message, 'error'); return; }
+                showError(`${file.name}: ${e.message}`);
+            }
+        }
+    }
 
+    async function removeSource(id) {
+        const removed = items.find((i) => i.id === id);
         try {
-            const res = await fetch(`/api/collections/${currentCollectionId}/urls`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url })
-            });
-            const data = await res.json();
-            
-            if (data.success) {
-                urlInput.value = '';
-                collectionItems = data.collection.items;
-                renderUrlList();
+            const data = await api(`/api/collections/${collectionId}/urls/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            syncFromServer(data.collection);
+            if (removed && !removed.url.startsWith('local://')) {
+                toast('Source removed', 'info', { action: 'Undo', onAction: () => addUrls([removed.url]) });
             } else {
-                showError(data.error || 'Failed to add URL.');
+                toast('Source removed');
             }
         } catch (e) {
-            console.error('Error adding URL', e);
-            showError('Network error while adding URL.');
-        } finally {
-            addUrlBtn.disabled = false;
+            toast(e.message, 'error');
         }
-    }
-
-    async function removeUrl(itemId) {
-        try {
-            const res = await fetch(`/api/collections/${currentCollectionId}/urls/${itemId}`, {
-                method: 'DELETE'
-            });
-            const data = await res.json();
-            if (data.success) {
-                collectionItems = data.collection.items;
-                renderUrlList();
-            }
-        } catch (e) {
-            console.error('Error removing URL', e);
-        }
-    }
-
-    async function moveUrl(itemId, direction) {
-        const idx = collectionItems.findIndex(i => i.id === itemId);
-        if (idx === -1) return;
-        
-        if (direction === 'up' && idx > 0) {
-            const temp = collectionItems[idx - 1];
-            collectionItems[idx - 1] = collectionItems[idx];
-            collectionItems[idx] = temp;
-        } else if (direction === 'down' && idx < collectionItems.length - 1) {
-            const temp = collectionItems[idx + 1];
-            collectionItems[idx + 1] = collectionItems[idx];
-            collectionItems[idx] = temp;
-        } else {
-            return; // No change
-        }
-        
-        renderUrlList();
-        saveOrder();
     }
 
     async function saveOrder() {
-        if (!currentCollectionId) return;
-        const itemIds = collectionItems.map(i => i.id);
-        
+        if (!collectionId) return;
         try {
-            await fetch(`/api/collections/${currentCollectionId}/urls/reorder`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ item_ids: itemIds })
+            const data = await api(`/api/collections/${collectionId}/urls/reorder`, {
+                method: 'PATCH', json: { item_ids: items.map((i) => i.id) },
             });
+            collection = data.collection;
         } catch (e) {
-            console.error('Failed to save order', e);
+            toast(e.message, 'error');
         }
     }
 
-    // ── Drag and Drop ───────────────────────────────────────────
-    let draggedItem = null;
-
-    function initDragAndDrop() {
-        const items = document.querySelectorAll('.url-item');
-        items.forEach(item => {
-            item.addEventListener('dragstart', handleDragStart);
-            item.addEventListener('dragover', handleDragOver);
-            item.addEventListener('drop', handleDrop);
-            item.addEventListener('dragend', handleDragEnd);
-        });
+    function moveSource(id, delta) {
+        const from = items.findIndex((i) => i.id === id);
+        const to = from + delta;
+        if (from < 0 || to < 0 || to >= items.length) return;
+        const [it] = items.splice(from, 1);
+        items.splice(to, 0, it);
+        renderSources();
+        saveOrder();
     }
 
-    function handleDragStart(e) {
-        draggedItem = this;
-        this.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', this.dataset.id);
+    function sourceKind(item) {
+        if (!item.url.startsWith('local://')) return 'web';
+        return /\.pdf$/i.test(item.title || item.url) ? 'pdf' : 'image';
     }
 
-    function handleDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        return false;
-    }
-
-    function handleDrop(e) {
-        e.stopPropagation();
-        if (draggedItem !== this) {
-            const draggedId = draggedItem.dataset.id;
-            const targetId = this.dataset.id;
-            
-            const draggedIdx = collectionItems.findIndex(i => i.id === draggedId);
-            const targetIdx = collectionItems.findIndex(i => i.id === targetId);
-            
-            const item = collectionItems.splice(draggedIdx, 1)[0];
-            collectionItems.splice(targetIdx, 0, item);
-            
-            renderUrlList();
-            saveOrder();
-        }
-        return false;
-    }
-
-    function handleDragEnd() {
-        this.classList.remove('dragging');
-        draggedItem = null;
-    }
-
-
-    function renderUrlList() {
-        urlList.innerHTML = '';
-        
-        if (collectionItems.length === 0) {
-            urlListContainer.style.display = 'none';
-            return;
-        }
-        
-        urlListContainer.style.display = 'block';
-        
-        collectionItems.forEach((item, index) => {
-            const div = document.createElement('div');
-            div.className = 'url-item';
-            div.draggable = true;
-            div.dataset.id = item.id;
-            
-            div.innerHTML = `
-                <div class="url-item-drag-handle" title="Drag to reorder">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>
-                    </svg>
-                </div>
-                <div class="url-item-content">
-                    <div class="url-item-title">${item.title || 'Loading...'}</div>
-                    <div class="url-item-url">${item.url}</div>
-                </div>
-                <div class="url-item-actions">
-                    <button class="url-action-btn" onclick="document.dispatchEvent(new CustomEvent('moveUrl', {detail: {id: '${item.id}', dir: 'up'}}))" ${index === 0 ? 'disabled style="opacity:0.3"' : ''}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                    </button>
-                    <button class="url-action-btn" onclick="document.dispatchEvent(new CustomEvent('moveUrl', {detail: {id: '${item.id}', dir: 'down'}}))" ${index === collectionItems.length - 1 ? 'disabled style="opacity:0.3"' : ''}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </button>
-                    <button class="url-action-btn delete" onclick="document.dispatchEvent(new CustomEvent('removeUrl', {detail: '${item.id}'}))">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    </button>
-                </div>
-            `;
-            urlList.appendChild(div);
-        });
-        
-        initDragAndDrop();
-    }
-
-    // Bind custom events from inline handlers
-    document.addEventListener('moveUrl', (e) => moveUrl(e.detail.id, e.detail.dir));
-    document.addEventListener('removeUrl', (e) => removeUrl(e.detail));
-
-    // ── Generation Flow ─────────────────────────────────────────
-
-    async function startGeneration() {
-        if (!currentCollectionId || collectionItems.length === 0) return;
-
-        const request = {
-            page_size: settingPageSize.value,
-            font_size: settingFontSize.value,
-            font_family: settingFontFamily.value,
-            include_images: settingImages.checked,
-            include_links: settingLinks.checked,
-            include_toc: settingToc.checked,
-            include_code: settingCode.checked,
-        };
-
-        showProgressSection();
-
+    function sourceMeta(item) {
+        if (item.status === 'failed' && item.error) return item.error;
+        if (item.uploading) return 'Uploading…';
+        if (sourceKind(item) !== 'web') return sourceKind(item) === 'pdf' ? 'PDF file' : 'Image';
         try {
-            const response = await fetch(`/api/collections/${currentCollectionId}/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(request),
-            });
-
-            const data = await response.json();
-            if (!data.success) {
-                showJobError(data.error || 'Failed to start generation.');
-                return;
-            }
-
-            startPolling();
-        } catch (err) {
-            console.error('Generation request failed:', err);
-            showJobError('Unable to connect to the server.');
+            const u = new URL(item.url);
+            return u.hostname.replace(/^www\./, '') + (u.pathname !== '/' ? u.pathname : '');
+        } catch (e) {
+            return item.url;
         }
     }
 
-    function showProgressSection() {
-        heroSection.style.display = 'none';
-        document.querySelector('.how-it-works').style.display = 'none';
-        document.querySelector('.features').style.display = 'none';
-        document.querySelector('.about').style.display = 'none';
-
-        progressSection.classList.add('active');
-        downloadSection.classList.remove('active');
-        errorSection.classList.remove('active');
-
-        progressSpinner.style.display = 'block';
-        progressCheck.style.display = 'none';
-        progressTitle.textContent = 'Generating PDFs...';
-        progressSubtitle.textContent = `Processing ${collectionItems.length} source(s)`;
-        progressBarFill.style.width = '0%';
-        progressPercent.textContent = '0%';
-        
-        progressSteps.innerHTML = ''; // Will fill via polling
+    function avatarLetter(item) {
+        const kind = sourceKind(item);
+        if (kind === 'pdf') return 'PDF';
+        if (kind === 'image') return 'IMG';
+        try { return new URL(item.url).hostname.replace(/^www\./, '').charAt(0); } catch (e) { return '?'; }
     }
 
-    function startPolling() {
-        if (pollInterval) clearInterval(pollInterval);
-        pollInterval = setInterval(pollStatus, 1000);
-    }
+    function renderSources() {
+        const all = [...items, ...pending];
+        sourceListWrap.hidden = all.length === 0;
+        sourceCount.textContent = plural(all.length, 'source');
+        buildBtn.disabled = items.length === 0 || pending.length > 0;
+        buildBtn.querySelector('.btn-text').textContent = items.length > 1 ? `Build PDF from ${items.length} sources` : 'Build PDF';
 
-    function stopPolling() {
-        if (pollInterval) {
-            clearInterval(pollInterval);
-            pollInterval = null;
-        }
-    }
-
-    async function pollStatus() {
-        if (!currentCollectionId) return;
-
-        try {
-            const response = await fetch(`/api/collections/${currentCollectionId}/status`);
-            const data = await response.json();
-            
-            if (data.success && data.collection) {
-                updateProgress(data.collection);
-
-                if (data.collection.status === 'completed' || data.collection.status === 'failed') {
-                    stopPolling();
-                    if (data.collection.status === 'completed') {
-                        triggerMerge(data.collection);
-                    } else {
-                        // Show retry option for partial failures
-                        const successCount = data.collection.items.filter(i => i.status === 'completed').length;
-                        if (successCount > 0) {
-                            if(confirm(`Only ${successCount} of ${data.collection.items.length} PDFs generated successfully. Do you want to merge the available ones?`)) {
-                                triggerMerge(data.collection);
-                            } else {
-                                showJobError('Some PDFs failed to generate.');
-                            }
-                        } else {
-                            showJobError(data.collection.error || 'All generations failed.');
-                        }
-                    }
-                }
-            }
-        } catch (err) {
-            console.error('Status poll failed:', err);
-        }
-    }
-
-    function updateProgress(collection) {
-        collectionItems = collection.items;
-        
-        let completed = 0;
-        let totalProgress = 0;
-        
-        progressSteps.innerHTML = '';
-        
-        collectionItems.forEach((item, idx) => {
-            if (item.status === 'completed') completed++;
-            totalProgress += (item.progress || 0);
-            
-            // Build UI for each item
-            let statusIcon = `<div class="step-indicator"></div>`;
-            let statusClass = '';
-            let statusText = item.message || item.status;
-            
-            if (item.status === 'completed') {
-                statusClass = 'completed';
-                statusIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>`;
-            } else if (item.status === 'failed') {
-                statusClass = 'failed';
-                statusIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-                statusText = item.error || 'Failed';
-            } else if (item.status !== 'queued') {
-                statusClass = 'active';
-            }
-            
-            progressSteps.innerHTML += `
-                <div class="step ${statusClass}" style="margin-bottom: 8px;">
-                    <div style="width: 20px; display: flex; justify-content: center;">${statusIcon}</div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-size: 14px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${idx + 1}. ${item.title || item.url}</div>
-                        <div class="step-text" style="font-size: 12px;">${statusText}</div>
+        sourceList.innerHTML = all.map((item, index) => {
+            const kind = sourceKind(item);
+            const avatar = avatarLetter(item);
+            const isPending = Boolean(item.pending);
+            const failed = item.status === 'failed';
+            return `
+                <li class="source-item${isPending ? ' is-pending' : ''}" data-id="${escapeHtml(item.id)}" ${isPending ? '' : 'draggable="true"'}>
+                    <span class="source-grip" title="Drag to reorder">${icon('grip')}</span>
+                    <span class="source-avatar" data-kind="${kind}" style="${avatar.length > 1 ? 'font-size:9px' : ''}">${escapeHtml(avatar)}</span>
+                    <div class="source-body">
+                        <div class="source-title">${escapeHtml(item.title || 'Untitled document')}</div>
+                        <div class="source-meta"${failed ? ' style="color:var(--danger)"' : ''}>${escapeHtml(sourceMeta(item))}</div>
                     </div>
-                    ${item.status === 'failed' ? `<button onclick="document.dispatchEvent(new CustomEvent('retryUrl', {detail: '${item.id}'}))" style="background: none; border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 11px;">Retry</button>` : ''}
-                </div>
-            `;
-        });
-        
-        const avgProgress = Math.floor(totalProgress / collectionItems.length);
-        progressBarFill.style.width = avgProgress + '%';
-        progressPercent.textContent = avgProgress + '%';
-        
-        progressTitle.textContent = 'Generating PDFs...';
-        progressSubtitle.textContent = `${completed} / ${collectionItems.length} completed`;
+                    ${isPending ? '<span class="spinner" style="color:var(--accent-text);margin-right:8px"></span>' : `
+                    <div class="source-actions">
+                        <button class="icon-btn" type="button" data-action="up" aria-label="Move up" ${index === 0 ? 'disabled' : ''}>${icon('up')}</button>
+                        <button class="icon-btn" type="button" data-action="down" aria-label="Move down" ${index >= items.length - 1 ? 'disabled' : ''}>${icon('down')}</button>
+                        <button class="icon-btn danger" type="button" data-action="remove" aria-label="Remove">${icon('trash')}</button>
+                    </div>`}
+                </li>`;
+        }).join('');
     }
 
-    document.addEventListener('retryUrl', async (e) => {
-        if (!currentCollectionId) return;
-        const itemId = e.detail;
-        
-        const request = {
-            page_size: settingPageSize.value,
-            font_size: settingFontSize.value,
-            font_family: settingFontFamily.value,
-            include_images: settingImages.checked,
-            include_links: settingLinks.checked,
-            include_toc: settingToc.checked,
-            include_code: settingCode.checked,
-        };
-        
-        await fetch(`/api/collections/${currentCollectionId}/retry/${itemId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request)
-        });
-        startPolling(); // Resume polling
+    sourceList.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const id = btn.closest('.source-item').dataset.id;
+        if (btn.dataset.action === 'up') moveSource(id, -1);
+        else if (btn.dataset.action === 'down') moveSource(id, 1);
+        else if (btn.dataset.action === 'remove') removeSource(id);
     });
 
-    async function triggerMerge(collection) {
-        progressTitle.textContent = 'Merging PDFs...';
-        progressSubtitle.textContent = 'Finalizing your document';
-        progressBarFill.style.width = '100%';
-        progressPercent.textContent = '99%';
-        progressSpinner.style.display = 'block';
-
-        const request = {
-            title: settingTitle.value.trim() || 'Study Material Collection',
-            add_cover_page: settingCover.checked,
-            add_source_separator: settingSeparator.checked,
-            generate_toc: settingToc.checked
-        };
-
-        try {
-            const response = await fetch(`/api/collections/${currentCollectionId}/merge`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(request),
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                showCompleted(data.collection);
-            } else {
-                showJobError(data.error || 'Failed to merge PDFs.');
-            }
-        } catch (err) {
-            showJobError('Network error during merge.');
-        }
-    }
-
-    function showCompleted(collection) {
-        progressSpinner.style.display = 'none';
-        progressCheck.style.display = 'block';
-        progressTitle.textContent = 'PDF Generated Successfully!';
-        progressSubtitle.textContent = '';
-        progressBarFill.style.width = '100%';
-        progressPercent.textContent = '100%';
-
-        // Setup Download Section
-        const completedCount = collection.items.filter(i => i.status === 'completed').length;
-        dlSources.textContent = completedCount;
-        const activePageCount = collection.edited_total_pages || collection.total_pages;
-        const activeSize = collection.edited_size_mb || collection.final_pdf_size_mb;
-        const activeFilename = collection.edited_pdf_filename || collection.final_pdf_filename;
-        thumbnailVersion = Date.now();
-        dlPages.textContent = activePageCount;
-        dlSize.textContent = `${activeSize.toFixed(1)} MB`;
-        downloadFilename.textContent = activeFilename;
-        
-        // Set custom filename input with collection title
-        const filenameInput = document.getElementById('custom-filename-input');
-        if (filenameInput) {
-            filenameInput.value = collection.title || 'Study_Material_Collection';
-        }
-        
-        // Update download link with custom filename support
-        const baseDownloadUrl = `/api/collections/${collection.id}/download`;
-        downloadBtn.href = baseDownloadUrl;
-        
-        // Update href dynamically when user types a filename
-        if (filenameInput) {
-            filenameInput.addEventListener('input', () => {
-                const customName = filenameInput.value.trim();
-                if (customName) {
-                    downloadBtn.href = `${baseDownloadUrl}?custom_filename=${encodeURIComponent(customName)}`;
-                } else {
-                    downloadBtn.href = baseDownloadUrl;
-                }
-            });
-            // Trigger once to set initial value
-            const initialName = filenameInput.value.trim();
-            if (initialName) {
-                downloadBtn.href = `${baseDownloadUrl}?custom_filename=${encodeURIComponent(initialName)}`;
+    // Drag-reorder sources
+    let draggingSourceId = null;
+    sourceList.addEventListener('dragstart', (e) => {
+        const li = e.target.closest('.source-item');
+        if (!li) return;
+        draggingSourceId = li.dataset.id;
+        li.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('application/x-p2p-source', draggingSourceId);
+    });
+    sourceList.addEventListener('dragover', (e) => {
+        if (!draggingSourceId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        sourceList.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
+        const li = e.target.closest('.source-item');
+        if (li && li.dataset.id !== draggingSourceId) li.classList.add('drop-target');
+    });
+    sourceList.addEventListener('drop', (e) => {
+        if (!draggingSourceId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const li = e.target.closest('.source-item');
+        if (li && li.dataset.id !== draggingSourceId) {
+            const from = items.findIndex((i) => i.id === draggingSourceId);
+            const to = items.findIndex((i) => i.id === li.dataset.id);
+            if (from > -1 && to > -1) {
+                const [it] = items.splice(from, 1);
+                items.splice(to, 0, it);
+                renderSources();
+                saveOrder();
             }
         }
-        
-        // Handle Save As button using File System Access API
-        const saveAsBtn = document.getElementById('save-as-btn');
-        if (saveAsBtn) {
-            // Hide button if API is not supported by the browser
-            if (!window.showSaveFilePicker) {
-                saveAsBtn.style.display = 'none';
-            } else {
-                saveAsBtn.onclick = async () => {
-                    try {
-                        const defaultName = (filenameInput && filenameInput.value.trim()) ? 
-                            filenameInput.value.trim() + '.pdf' : 
-                            (collection.title || 'Page2PDF_Document') + '.pdf';
-                            
-                        const fileHandle = await window.showSaveFilePicker({
-                            suggestedName: defaultName,
-                            types: [{
-                                description: 'PDF Document',
-                                accept: { 'application/pdf': ['.pdf'] }
-                            }]
-                        });
-                        
-                        // Fetch the file as blob and write it
-                        const response = await fetch(downloadBtn.href);
-                        if (!response.ok) throw new Error("Failed to fetch PDF");
-                        const blob = await response.blob();
-                        
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(blob);
-                        await writable.close();
-                    } catch (err) {
-                        // User cancelled or error occurred
-                        console.log("Save As aborted or failed", err);
-                    }
-                };
-            }
+    });
+    sourceList.addEventListener('dragend', () => {
+        draggingSourceId = null;
+        sourceList.querySelectorAll('.dragging, .drop-target').forEach((el) => el.classList.remove('dragging', 'drop-target'));
+    });
+
+    $('clear-sources-btn').addEventListener('click', async () => {
+        if (!items.length) return;
+        const ok = await confirmDialog({ title: 'Clear all sources?', body: `This removes ${plural(items.length, 'source')} from the list.`, ok: 'Clear all' });
+        if (ok) resetAll();
+    });
+
+    urlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); addFromInput(); }
+    });
+    urlInput.addEventListener('input', () => showError(''));
+    urlInput.addEventListener('paste', (e) => {
+        const text = (e.clipboardData || window.clipboardData).getData('text');
+        const urls = text.match(URL_PATTERN) || [];
+        if (urls.length > 1) {
+            e.preventDefault();
+            addUrls([...new Set(urls.map(normalizeUrl))]);
         }
-        
-        // Individual Downloads
-        individualDownloadsList.innerHTML = '';
-        collection.items.forEach((item, idx) => {
-            if (item.status === 'completed' && item.filename) {
-                individualDownloadsList.innerHTML += `
-                    <div class="individual-download-item">
-                        <div class="individual-download-info">
-                            <div class="individual-download-title">${idx + 1}. ${item.title}</div>
-                            <div class="individual-download-url">${item.url}</div>
-                        </div>
-                        <a href="/api/collections/${collection.id}/urls/${item.id}/download" class="individual-download-btn" download>Download</a>
-                    </div>
-                `;
-            }
+    });
+    addUrlBtn.addEventListener('click', addFromInput);
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async () => {
+        const files = Array.from(fileInput.files || []);
+        fileInput.value = '';
+        await uploadFiles(files);
+    });
+
+    // Drop anywhere on the composer card
+    let dragDepth = 0;
+    const isExternalDrag = (e) => !draggingSourceId && e.dataTransfer && Array.from(e.dataTransfer.types || []).some((t) => t === 'Files' || t === 'text/uri-list' || t === 'text/plain');
+    composer.addEventListener('dragenter', (e) => {
+        if (!isExternalDrag(e)) return;
+        e.preventDefault();
+        dragDepth++;
+        composer.classList.add('drag-active');
+    });
+    composer.addEventListener('dragover', (e) => { if (isExternalDrag(e)) e.preventDefault(); });
+    composer.addEventListener('dragleave', () => {
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (!dragDepth) composer.classList.remove('drag-active');
+    });
+    composer.addEventListener('drop', async (e) => {
+        if (!isExternalDrag(e)) return;
+        e.preventDefault();
+        dragDepth = 0;
+        composer.classList.remove('drag-active');
+        const files = Array.from(e.dataTransfer.files || []);
+        if (files.length) { await uploadFiles(files); return; }
+        const text = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+        const urls = (text.match(URL_PATTERN) || []).map(normalizeUrl);
+        if (urls.length) await addUrls([...new Set(urls)]);
+    });
+
+    document.querySelectorAll('.chip[data-url]').forEach((chip) => chip.addEventListener('click', () => {
+        urlInput.value = chip.dataset.url;
+        urlInput.focus();
+        showError('');
+    }));
+
+    // ── Workspace / stepper ─────────────────────────────────────
+    const workspace = $('workspace');
+    const progressPanel = $('progress-panel');
+    const errorPanel = $('error-section');
+    const editorPanel = $('page-management-section');
+    const exportPanel = $('download-section');
+    const STEP_ORDER = ['build', 'edit', 'export'];
+
+    function showPanel(panel, step) {
+        document.body.classList.add('is-working');
+        workspace.hidden = false;
+        [progressPanel, errorPanel, editorPanel, exportPanel].forEach((p) => { p.hidden = p !== panel; });
+        const current = STEP_ORDER.indexOf(step);
+        document.querySelectorAll('.stepper-step').forEach((li) => {
+            const i = STEP_ORDER.indexOf(li.dataset.step);
+            li.classList.toggle('is-current', i === current);
+            li.classList.toggle('is-done', i < current);
         });
-
-        // Initialize Page Management UI
-        totalPagesCount = activePageCount;
-        pageStates = Array(totalPagesCount).fill(true);
-        pageSelections = Array(totalPagesCount).fill(false);
-        pageRotations = {};
-        pageOrder = Array.from({length: totalPagesCount}, (_, i) => i);
-        pmRangeInput.value = '';
-        pmErrorMessage.textContent = '';
-        
-        renderThumbnails();
-        updatePmUI();
-        
-        pmSection.style.display = 'block';
-        downloadSection.classList.remove('active');
-    }
-    
-    function renderThumbnails() {
-        pmThumbnailsGrid.innerHTML = '';
-        
-        pageOrder.forEach((originalIndex, displayIndex) => {
-            const div = document.createElement('div');
-            div.className = 'pm-thumbnail-item';
-            div.dataset.index = originalIndex;
-            div.draggable = true;
-            
-            const currentRotation = pageRotations[originalIndex] || 0;
-            
-            div.innerHTML = `
-                <div class="pm-thumbnail-img-wrapper" style="transform: rotate(${currentRotation}deg); transition: transform 0.3s ease;">
-                    <img class="pm-thumbnail-img" src="/api/collections/${currentCollectionId}/thumbnails/${originalIndex}?v=${thumbnailVersion}" loading="lazy" alt="Page ${originalIndex + 1}">
-                    <div class="pm-thumbnail-zoom" title="View Full Page" style="transform: rotate(-${currentRotation}deg);">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                    </div>
-                    <div class="pm-thumbnail-rotate" title="Rotate Page" style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; border-radius: 4px; padding: 4px; cursor: pointer; transform: rotate(-${currentRotation}deg);">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 2v6h-6"></path><path d="M21 13a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path></svg>
-                    </div>
-                    <div class="pm-thumbnail-status" style="transform: rotate(-${currentRotation}deg);">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-                    </div>
-                </div>
-                <div class="pm-thumbnail-label">Page ${originalIndex + 1}</div>
-            `;
-            
-            div.addEventListener('click', (e) => {
-                if (e.target.closest('.pm-thumbnail-zoom')) {
-                    e.stopPropagation();
-                    openImageModal(originalIndex);
-                    return;
-                }
-                if (e.target.closest('.pm-thumbnail-rotate')) {
-                    e.stopPropagation();
-                    pageRotations[originalIndex] = (currentRotation + 90) % 360;
-                    renderThumbnails();
-                    updatePmUI();
-                    return;
-                }
-                pageSelections[originalIndex] = !pageSelections[originalIndex];
-                updatePmUI();
-            });
-            
-            div.addEventListener('dblclick', (e) => {
-                openImageModal(originalIndex);
-            });
-            
-            // Drag and Drop Logic
-            div.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('text/plain', displayIndex);
-                div.classList.add('dragging');
-            });
-            div.addEventListener('dragend', () => {
-                div.classList.remove('dragging');
-                document.querySelectorAll('.pm-thumbnail-item').forEach(el => el.classList.remove('drag-over'));
-            });
-            div.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                div.classList.add('drag-over');
-            });
-            div.addEventListener('dragleave', () => {
-                div.classList.remove('drag-over');
-            });
-            div.addEventListener('drop', (e) => {
-                e.preventDefault();
-                div.classList.remove('drag-over');
-                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                const toIndex = displayIndex;
-                if (fromIndex !== toIndex) {
-                    const item = pageOrder.splice(fromIndex, 1)[0];
-                    pageOrder.splice(toIndex, 0, item);
-                    renderThumbnails();
-                    updatePmUI();
-                }
-            });
-            
-            pmThumbnailsGrid.appendChild(div);
-        });
-    }
-    
-    function openImageModal(pageIndex) {
-        modalImg.style.display = 'none';
-        modalLoader.style.display = 'block';
-        imageModal.style.display = 'flex';
-        
-        modalImg.onload = () => {
-            modalLoader.style.display = 'none';
-            modalImg.style.display = 'block';
-        };
-        
-        modalImg.src = `/api/collections/${currentCollectionId}/thumbnails/${pageIndex}?zoom=2.0&v=${thumbnailVersion}`;
-    }
-    
-    function updatePmUI() {
-        let kept = 0;
-        let removed = 0;
-        
-        const items = pmThumbnailsGrid.querySelectorAll('.pm-thumbnail-item');
-        for (let i = 0; i < totalPagesCount; i++) {
-            const originalIndex = pageOrder[i];
-            const item = items[i];
-            if (!item) continue;
-            
-            if (pageStates[originalIndex]) {
-                kept++;
-                item.classList.remove('removed');
-                const svg = item.querySelector('.pm-thumbnail-status svg');
-                if (svg) svg.innerHTML = '<path d="M20 6L9 17l-5-5"/>';
-            } else {
-                removed++;
-                item.classList.add('removed');
-                const svg = item.querySelector('.pm-thumbnail-status svg');
-                if (svg) svg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
-            }
-            
-            if (pageSelections[originalIndex]) {
-                item.classList.add('selected');
-            } else {
-                item.classList.remove('selected');
-            }
-        }
-        
-        pmTotal.textContent = `Total: ${totalPagesCount}`;
-        pmKept.textContent = `Kept: ${kept}`;
-        pmRemoved.textContent = `Removed: ${removed}`;
-    }
-    
-    function applyCustomRange() {
-        const val = pmRangeInput.value.trim();
-        pmErrorMessage.textContent = '';
-        if (!val) {
-            pmErrorMessage.textContent = 'Please enter a valid range (e.g. 1-5, 8).';
-            return;
-        }
-        
-        let newStates = Array(totalPagesCount).fill(false);
-        const parts = val.split(',');
-        
-        for (let part of parts) {
-            part = part.trim();
-            if (!part) continue;
-            
-            if (part.includes('-')) {
-                const rangeParts = part.split('-');
-                if (rangeParts.length !== 2) {
-                    pmErrorMessage.textContent = `Invalid range format: ${part}`;
-                    return;
-                }
-                const start = parseInt(rangeParts[0].trim());
-                const end = parseInt(rangeParts[1].trim());
-                
-                if (isNaN(start) || isNaN(end) || start < 1 || start > end) {
-                    pmErrorMessage.textContent = `Invalid numeric range: ${part}`;
-                    return;
-                }
-                for (let i = start; i <= end; i++) {
-                    if (i > 0 && i <= totalPagesCount) newStates[i - 1] = true;
-                }
-            } else {
-                const num = parseInt(part);
-                if (isNaN(num) || num < 1) {
-                    pmErrorMessage.textContent = `Invalid page number: ${part}`;
-                    return;
-                }
-                if (num > 0 && num <= totalPagesCount) newStates[num - 1] = true;
-            }
-        }
-        
-        pageStates = newStates;
-        pageSelections.fill(false);
-        updatePmUI();
-    }
-    
-    async function applyPageEdits() {
-        const keepPages = [];
-        for (let i = 0; i < totalPagesCount; i++) {
-            const originalIndex = pageOrder[i];
-            if (pageStates[originalIndex]) keepPages.push(originalIndex);
-        }
-        
-        if (keepPages.length === 0) {
-            pmErrorMessage.textContent = 'Cannot apply: You must keep at least one page.';
-            return;
-        }
-        
-        pmBtnPreview.disabled = true;
-        pmBtnPreview.querySelector('.btn-text').textContent = 'Applying...';
-        
-        // Filter rotations to only include kept pages that have non-zero rotation
-        let validRotations = {};
-        for (let key in pageRotations) {
-            if (pageRotations[key] > 0 && keepPages.includes(parseInt(key))) {
-                validRotations[key] = pageRotations[key];
-            }
-        }
-        
-        try {
-            const res = await fetch(`/api/collections/${currentCollectionId}/edit-pages`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    keep_pages: keepPages,
-                    rotations: validRotations 
-                })
-            });
-            const data = await res.json();
-            
-            if (data.success && data.collection) {
-                const col = data.collection;
-                const finalSize = col.edited_size_mb || col.final_pdf_size_mb;
-                const finalPages = col.edited_total_pages || col.total_pages;
-                
-                dlPages.textContent = `${finalPages} Pages`;
-                dlSize.textContent = `${finalSize.toFixed(1)} MB`;
-                
-                pmSection.style.display = 'none';
-                downloadSection.classList.add('active');
-            } else {
-                pmErrorMessage.textContent = data.error || 'Failed to edit PDF pages.';
-            }
-        } catch (e) {
-            pmErrorMessage.textContent = 'Network error while applying edits.';
-        } finally {
-            pmBtnPreview.disabled = false;
-            pmBtnPreview.querySelector('.btn-text').textContent = 'Apply Changes & Preview';
-        }
-    }
-
-    function showJobError(msg) {
-        progressSpinner.style.display = 'none';
-        progressTitle.textContent = 'Generation Failed';
-        progressSubtitle.textContent = '';
-        errorDetail.textContent = msg;
-        errorSection.classList.add('active');
-    }
-
-    function resetToHome() {
-        stopPolling();
-        currentCollectionId = null;
-        collectionItems = [];
-        urlList.innerHTML = '';
-        urlListContainer.style.display = 'none';
-
-        progressSection.classList.remove('active');
-        pmSection.style.display = 'none';
-        downloadSection.classList.remove('active');
-        errorSection.classList.remove('active');
-
-        heroSection.style.display = '';
-        document.querySelector('.how-it-works').style.display = '';
-        document.querySelector('.features').style.display = '';
-        document.querySelector('.about').style.display = '';
-        
-        settingTitle.value = '';
-
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // ── Smooth Scroll for Nav Links ─────────────────────────────
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                e.preventDefault();
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    function backToSources() {
+        stopPolling();
+        document.body.classList.remove('is-working');
+        workspace.hidden = true;
+        renderSources();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetAll() {
+        stopPolling();
+        collectionId = null;
+        collection = null;
+        items = [];
+        pending = [];
+        settings.title.value = '';
+        showError('');
+        editor.reset();
+        resetExportOptions();
+        backToSources();
+    }
+
+    // ── Build (generate + merge) ────────────────────────────────
+    const progressRing = $('progress-ring');
+    const ringFill = $('ring-fill');
+    const RING = 2 * Math.PI * 28;
+    const progressTitle = $('progress-title');
+    const progressSubtitle = $('progress-subtitle');
+    const progressPercent = $('progress-percent');
+    const progressSteps = $('progress-steps');
+    const progressActions = $('progress-actions');
+
+    function setRing(pct, done = false) {
+        ringFill.style.strokeDashoffset = String(RING * (1 - pct / 100));
+        progressPercent.textContent = `${Math.round(pct)}%`;
+        progressRing.classList.toggle('is-done', done);
+    }
+
+    async function startBuild() {
+        if (!collectionId || !items.length) return;
+        showPanel(progressPanel, 'build');
+        progressActions.hidden = true;
+        progressTitle.textContent = 'Building your PDF…';
+        progressSubtitle.textContent = `Processing ${plural(items.length, 'source')}`;
+        setRing(0);
+        renderProgress(items);
+        try {
+            await api(`/api/collections/${collectionId}/generate`, { method: 'POST', json: generationOptions() });
+            startPolling();
+        } catch (e) {
+            showFatal(e.message);
+        }
+    }
+
+    function startPolling() {
+        stopPolling();
+        pollTimer = setInterval(pollStatus, 900);
+        pollStatus();
+    }
+    function stopPolling() {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = null;
+    }
+
+    let polling = false;
+    async function pollStatus() {
+        if (!collectionId || polling) return;
+        polling = true;
+        try {
+            const data = await api(`/api/collections/${collectionId}/status`);
+            const col = data.collection;
+            collection = col;
+            items = col.items;
+            const done = items.filter((i) => i.status === 'completed').length;
+            const failed = items.filter((i) => i.status === 'failed').length;
+            const avg = items.reduce((sum, i) => sum + (i.progress || 0), 0) / Math.max(1, items.length);
+            renderProgress(items);
+            setRing(Math.min(avg, 96));
+            progressSubtitle.textContent = `${done} of ${items.length} ready${failed ? ` · ${failed} failed` : ''}`;
+
+            const finished = items.every((i) => i.status === 'completed' || i.status === 'failed');
+            if (finished && (col.status === 'completed' || col.status === 'failed')) {
+                stopPolling();
+                if (!failed) {
+                    await mergeCollection();
+                } else if (done > 0) {
+                    progressTitle.textContent = `${plural(failed, 'source')} couldn't be converted`;
+                    progressSubtitle.textContent = 'Retry them, or continue without them.';
+                    progressActions.hidden = false;
+                } else {
+                    showFatal(items.find((i) => i.error)?.error || 'None of the sources could be converted.');
+                }
+            }
+        } catch (e) {
+            stopPolling();
+            showFatal(e.message);
+        } finally {
+            polling = false;
+        }
+    }
+
+    const STATUS_LABEL = {
+        queued: 'Waiting…', validating: 'Validating link…', fetching: 'Fetching page…', extracting: 'Extracting content…',
+        cleaning: 'Cleaning up…', formatting: 'Formatting…', generating_pdf: 'Rendering PDF…', completed: 'Ready', failed: 'Failed',
+    };
+
+    function renderProgress(list) {
+        progressSteps.innerHTML = list.map((item, idx) => {
+            const state = item.status === 'completed' ? 'is-done' : item.status === 'failed' ? 'is-failed' : item.status === 'queued' ? '' : 'is-active';
+            const statusIcon = item.status === 'completed' ? icon('check', 'i-sm')
+                : item.status === 'failed' ? icon('x', 'i-sm')
+                : item.status === 'queued' ? `<span style="font-size:11px;font-weight:700">${idx + 1}</span>`
+                : '<span class="spinner" style="width:13px;height:13px"></span>';
+            const msg = item.status === 'failed' ? (item.error || 'Failed') : (item.message || STATUS_LABEL[item.status] || item.status);
+            return `
+                <li class="progress-item ${state}">
+                    <span class="progress-status">${statusIcon}</span>
+                    <div class="progress-body">
+                        <div class="progress-name">${escapeHtml(item.title || item.url)}</div>
+                        <div class="progress-msg">${escapeHtml(msg)}</div>
+                        ${state === 'is-active' ? `<div class="mini-bar"><span style="width:${Number(item.progress) || 0}%"></span></div>` : ''}
+                    </div>
+                    ${item.status === 'failed' ? `<button class="btn btn-ghost" type="button" data-retry="${escapeHtml(item.id)}">${icon('refresh', 'i-sm')}Retry</button>` : ''}
+                </li>`;
+        }).join('');
+    }
+
+    progressSteps.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-retry]');
+        if (!btn || !collectionId) return;
+        btn.disabled = true;
+        progressActions.hidden = true;
+        progressTitle.textContent = 'Retrying…';
+        try {
+            await api(`/api/collections/${collectionId}/retry/${encodeURIComponent(btn.dataset.retry)}`, { method: 'POST', json: generationOptions() });
+            startPolling();
+        } catch (err) {
+            toast(err.message, 'error');
+            btn.disabled = false;
+        }
+    });
+
+    $('progress-merge-btn').addEventListener('click', () => mergeCollection());
+    $('progress-back-btn').addEventListener('click', backToSources);
+    $('retry-btn').addEventListener('click', () => {
+        if (collectionId) backToSources(); else resetAll();
+    });
+    buildBtn.addEventListener('click', startBuild);
+
+    async function mergeCollection() {
+        progressActions.hidden = true;
+        progressTitle.textContent = 'Merging everything together…';
+        progressSubtitle.textContent = 'Adding contents, cover and bookmarks';
+        setRing(98);
+        try {
+            const data = await api(`/api/collections/${collectionId}/merge`, {
+                method: 'POST',
+                json: {
+                    title: documentTitle(),
+                    author: settings.author.value.trim() || null,
+                    add_cover_page: settings.cover.checked,
+                    add_source_separator: settings.separator.checked,
+                    generate_toc: settings.toc.checked,
+                },
+            });
+            setRing(100, true);
+            progressTitle.textContent = 'Done!';
+            collection = data.collection;
+            resetExportOptions();
+            setTimeout(() => {
+                editor.load(collection);
+                showPanel(editorPanel, 'edit');
+            }, 350);
+        } catch (e) {
+            showFatal(e.message);
+        }
+    }
+
+    function showFatal(message) {
+        $('error-detail').textContent = message;
+        showPanel(errorPanel, 'build');
+    }
+
+    // ── Page editor ─────────────────────────────────────────────
+    const editor = (() => {
+        const grid = $('pm-thumbnails-grid');
+        const pills = { total: $('pm-total'), kept: $('pm-kept'), removed: $('pm-removed'), selected: $('pm-selected') };
+        const errorEl = $('pm-error-message');
+        const dirtyNote = $('pm-dirty-note');
+        const undoBtn = $('pm-undo');
+        const redoBtn = $('pm-redo');
+        const rangeInput = $('pm-range-input');
+        const zoom = $('pm-zoom');
+
+        let pages = [];          // [{ key, src, rot, removed }]
+        let selected = new Set();
+        let anchorKey = null;
+        let undoStack = [];
+        let redoStack = [];
+        let total = 0;
+        let nextKey = 0;
+        const nodes = new Map(); // key -> element
+
+        const snapshot = () => JSON.stringify(pages);
+        function record() {
+            undoStack.push(snapshot());
+            if (undoStack.length > 100) undoStack.shift();
+            redoStack = [];
+        }
+        function restore(state) {
+            pages = JSON.parse(state);
+            const keys = new Set(pages.map((p) => p.key));
+            selected = new Set([...selected].filter((k) => keys.has(k)));
+            render();
+        }
+
+        function load(col) {
+            total = col.edited_total_pages || col.total_pages || 0;
+            thumbVersion = Date.now();
+            nodes.clear();
+            grid.innerHTML = '';
+            pages = Array.from({ length: total }, (_, i) => ({ key: nextKey++, src: i, rot: 0, removed: false }));
+            selected = new Set();
+            anchorKey = null;
+            undoStack = [];
+            redoStack = [];
+            errorEl.textContent = '';
+            rangeInput.value = '';
+            render();
+        }
+
+        function reset() {
+            pages = [];
+            total = 0;
+            nodes.clear();
+            grid.innerHTML = '';
+        }
+
+        const isDirty = () => pages.length !== total || pages.some((p, i) => p.src !== i || p.rot % 360 || p.removed);
+        const kept = () => pages.filter((p) => !p.removed);
+
+        function thumbUrl(src, z) {
+            return `/api/collections/${collectionId}/thumbnails/${src}?v=${thumbVersion}${z ? `&zoom=${z}` : ''}`;
+        }
+
+        function buildNode(page) {
+            const el = document.createElement('div');
+            el.className = 'thumb';
+            el.draggable = true;
+            el.tabIndex = 0;
+            el.dataset.key = page.key;
+            el.innerHTML = `
+                <div class="thumb-paper">
+                    <span class="thumb-check">${icon('check')}</span>
+                    <span class="thumb-badge" hidden></span>
+                    <span class="spinner thumb-loading"></span>
+                    <img class="thumb-img" alt="" loading="lazy" draggable="false">
+                    <div class="thumb-tools">
+                        <button class="thumb-tool" type="button" data-tool="zoom" aria-label="Preview page" title="Preview">${icon('zoom')}</button>
+                        <button class="thumb-tool" type="button" data-tool="rotate" aria-label="Rotate page" title="Rotate">${icon('rotate')}</button>
+                        <button class="thumb-tool danger" type="button" data-tool="remove" aria-label="Remove page" title="Remove / restore">${icon('trash')}</button>
+                    </div>
+                </div>
+                <div class="thumb-label"></div>`;
+            const img = el.querySelector('img');
+            img.addEventListener('load', () => el.querySelector('.thumb-loading').remove(), { once: true });
+            img.addEventListener('error', () => el.querySelector('.thumb-loading')?.remove(), { once: true });
+            img.src = thumbUrl(page.src);
+            return el;
+        }
+
+        function render() {
+            const order = [];
+            const keysNow = new Set();
+            let position = 0;
+            pages.forEach((page) => {
+                keysNow.add(page.key);
+                let el = nodes.get(page.key);
+                if (!el) { el = buildNode(page); nodes.set(page.key, el); }
+                if (!page.removed) position++;
+                const rot = ((page.rot % 360) + 360) % 360;
+                const img = el.querySelector('.thumb-img');
+                img.style.transform = rot ? `rotate(${rot}deg)${rot % 180 ? ' scale(0.707)' : ''}` : '';
+                img.alt = `Page ${page.src + 1}`;
+                el.classList.toggle('is-selected', selected.has(page.key));
+                el.classList.toggle('is-removed', page.removed);
+                el.setAttribute('aria-selected', String(selected.has(page.key)));
+                const label = el.querySelector('.thumb-label');
+                const origin = page.src + 1;
+                label.innerHTML = page.removed
+                    ? `<span>Removed</span><small>p.${origin}</small>`
+                    : `<span>${position}</span>${position !== origin ? `<small>was p.${origin}</small>` : ''}`;
+                const badge = el.querySelector('.thumb-badge');
+                badge.hidden = !rot;
+                badge.textContent = rot ? `${rot}°` : '';
+                order.push(el);
+            });
+            nodes.forEach((el, key) => { if (!keysNow.has(key)) { el.remove(); nodes.delete(key); } });
+            order.forEach((el) => grid.appendChild(el));
+
+            const keptCount = kept().length;
+            pills.total.textContent = plural(pages.length, 'page');
+            pills.kept.textContent = `${keptCount} kept`;
+            pills.removed.textContent = `${pages.length - keptCount} removed`;
+            pills.removed.hidden = keptCount === pages.length;
+            pills.selected.textContent = `${selected.size} selected`;
+            pills.selected.hidden = selected.size === 0;
+            dirtyNote.hidden = !isDirty();
+            undoBtn.disabled = !undoStack.length;
+            redoBtn.disabled = !redoStack.length;
+            ['pm-btn-remove-selected', 'pm-btn-keep-selected', 'pm-btn-rotate-selected', 'pm-btn-duplicate'].forEach((id) => { $(id).disabled = selected.size === 0; });
+            $('pm-btn-select-all').textContent = selected.size === pages.length && pages.length ? 'Select none' : 'Select all';
+            const continueText = $('pm-btn-continue').querySelector('.btn-text');
+            continueText.textContent = isDirty() ? 'Apply & continue' : 'Continue to export';
+        }
+
+        // Mutations
+        function mutate(fn) {
+            record();
+            fn();
+            errorEl.textContent = '';
+            render();
+        }
+        function toggleSelectAll() {
+            selected = selected.size === pages.length ? new Set() : new Set(pages.map((p) => p.key));
+            render();
+        }
+        function removeSelected() {
+            if (!selected.size) return;
+            const targets = pages.filter((p) => selected.has(p.key));
+            const restore = targets.every((p) => p.removed);
+            mutate(() => { targets.forEach((p) => { p.removed = !restore; }); selected.clear(); });
+        }
+        function keepSelected() {
+            if (!selected.size) return;
+            mutate(() => { pages.forEach((p) => { p.removed = !selected.has(p.key); }); selected.clear(); });
+        }
+        function rotateSelected() {
+            if (!selected.size) return;
+            mutate(() => pages.forEach((p) => { if (selected.has(p.key)) p.rot = (p.rot + 90) % 360; }));
+        }
+        function duplicateSelected() {
+            if (!selected.size) return;
+            mutate(() => {
+                const out = [];
+                const copies = new Set();
+                pages.forEach((p) => {
+                    out.push(p);
+                    if (selected.has(p.key)) {
+                        const copy = { ...p, key: nextKey++, removed: false };
+                        copies.add(copy.key);
+                        out.push(copy);
+                    }
+                });
+                pages = out;
+                selected = copies;
+            });
+            toast(`Duplicated ${plural(selected.size, 'page')}`, 'success');
+        }
+        function reverse() {
+            if (pages.length < 2) return;
+            mutate(() => pages.reverse());
+        }
+        function resetEdits() {
+            if (!isDirty()) return;
+            mutate(() => {
+                pages = Array.from({ length: total }, (_, i) => ({ key: nextKey++, src: i, rot: 0, removed: false }));
+                selected.clear();
+            });
+        }
+        function undo() {
+            if (!undoStack.length) return;
+            redoStack.push(snapshot());
+            restore(undoStack.pop());
+        }
+        function redo() {
+            if (!redoStack.length) return;
+            undoStack.push(snapshot());
+            restore(redoStack.pop());
+        }
+
+        // Range parsing (1-based positions in the current order, removed pages included)
+        function parseRange(text) {
+            const result = new Set();
+            for (let part of text.split(',')) {
+                part = part.trim();
+                if (!part) continue;
+                const m = part.match(/^(\d+)\s*(?:-\s*(\d+)?)?$/);
+                if (!m) throw new Error(`"${part}" isn't a valid page or range.`);
+                const start = parseInt(m[1], 10);
+                const end = m[2] ? parseInt(m[2], 10) : (part.includes('-') ? pages.length : start);
+                if (start < 1 || end < start) throw new Error(`"${part}" isn't a valid range.`);
+                if (start > pages.length) throw new Error(`Page ${start} doesn't exist (there are ${pages.length}).`);
+                for (let i = start; i <= Math.min(end, pages.length); i++) result.add(pages[i - 1].key);
+            }
+            if (!result.size) throw new Error('Enter pages like 1-5, 8, 10-');
+            return result;
+        }
+        function rangeSelect() {
+            try { selected = parseRange(rangeInput.value); errorEl.textContent = ''; render(); } catch (e) { errorEl.textContent = e.message; }
+        }
+        function rangeKeep() {
+            try {
+                const keys = parseRange(rangeInput.value);
+                mutate(() => { pages.forEach((p) => { p.removed = !keys.has(p.key); }); selected.clear(); });
+            } catch (e) { errorEl.textContent = e.message; }
+        }
+
+        // Click / selection
+        grid.addEventListener('click', (e) => {
+            const el = e.target.closest('.thumb');
+            if (!el) return;
+            const key = Number(el.dataset.key);
+            const page = pages.find((p) => p.key === key);
+            const tool = e.target.closest('[data-tool]');
+            if (tool) {
+                e.stopPropagation();
+                if (tool.dataset.tool === 'zoom') lightbox.open(pages.indexOf(page));
+                else if (tool.dataset.tool === 'rotate') mutate(() => { page.rot = (page.rot + 90) % 360; });
+                else if (tool.dataset.tool === 'remove') mutate(() => { page.removed = !page.removed; });
+                return;
+            }
+            if (e.shiftKey && anchorKey !== null) {
+                const a = pages.findIndex((p) => p.key === anchorKey);
+                const b = pages.indexOf(page);
+                const [lo, hi] = a < b ? [a, b] : [b, a];
+                if (!(e.ctrlKey || e.metaKey)) selected.clear();
+                for (let i = lo; i <= hi; i++) selected.add(pages[i].key);
+            } else {
+                if (selected.has(key)) selected.delete(key); else selected.add(key);
+                anchorKey = key;
+            }
+            render();
+        });
+        grid.addEventListener('dblclick', (e) => {
+            const el = e.target.closest('.thumb');
+            if (!el || e.target.closest('[data-tool]')) return;
+            lightbox.open(pages.findIndex((p) => p.key === Number(el.dataset.key)));
+        });
+        grid.addEventListener('keydown', (e) => {
+            const el = e.target.closest('.thumb');
+            if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); el.click(); }
+        });
+
+        // Drag reorder (moves the whole selection if the dragged page is selected)
+        let dragKeys = null;
+        let dropTarget = null;
+        let dropAfter = false;
+        const clearDropMarks = () => grid.querySelectorAll('.drop-before, .drop-after').forEach((n) => n.classList.remove('drop-before', 'drop-after'));
+        grid.addEventListener('dragstart', (e) => {
+            const el = e.target.closest('.thumb');
+            if (!el) return;
+            const key = Number(el.dataset.key);
+            dragKeys = selected.has(key) ? pages.filter((p) => selected.has(p.key)).map((p) => p.key) : [key];
+            dragKeys.forEach((k) => nodes.get(k)?.classList.add('dragging'));
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(key));
+        });
+        grid.addEventListener('dragover', (e) => {
+            if (!dragKeys) return;
+            e.preventDefault();
+            const el = e.target.closest('.thumb');
+            clearDropMarks();
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            dropAfter = e.clientX > rect.left + rect.width / 2;
+            dropTarget = Number(el.dataset.key);
+            el.classList.add(dropAfter ? 'drop-after' : 'drop-before');
+        });
+        grid.addEventListener('drop', (e) => {
+            if (!dragKeys) return;
+            e.preventDefault();
+            if (dropTarget !== null && !dragKeys.includes(dropTarget)) {
+                const moving = dragKeys;
+                mutate(() => {
+                    const moved = pages.filter((p) => moving.includes(p.key));
+                    const rest = pages.filter((p) => !moving.includes(p.key));
+                    let at = rest.findIndex((p) => p.key === dropTarget);
+                    if (dropAfter) at++;
+                    rest.splice(at, 0, ...moved);
+                    pages = rest;
+                });
             }
         });
-    });
+        grid.addEventListener('dragend', () => {
+            grid.querySelectorAll('.dragging').forEach((n) => n.classList.remove('dragging'));
+            clearDropMarks();
+            dragKeys = null;
+            dropTarget = null;
+        });
 
-    let lastScroll = 0;
-    window.addEventListener('scroll', () => {
-        const navbar = document.getElementById('navbar');
-        const scrollTop = window.pageYOffset;
-        if (scrollTop > 50) {
-            navbar.style.background = 'rgba(10, 10, 15, 0.95)';
-        } else {
-            navbar.style.background = 'rgba(10, 10, 15, 0.8)';
+        // Toolbar
+        $('pm-btn-select-all').addEventListener('click', toggleSelectAll);
+        $('pm-btn-remove-selected').addEventListener('click', removeSelected);
+        $('pm-btn-keep-selected').addEventListener('click', keepSelected);
+        $('pm-btn-rotate-selected').addEventListener('click', rotateSelected);
+        $('pm-btn-duplicate').addEventListener('click', duplicateSelected);
+        $('pm-btn-reverse').addEventListener('click', reverse);
+        $('pm-btn-restore-all').addEventListener('click', resetEdits);
+        $('pm-btn-range-select').addEventListener('click', rangeSelect);
+        $('pm-btn-apply-range').addEventListener('click', rangeKeep);
+        rangeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); rangeSelect(); } });
+        undoBtn.addEventListener('click', undo);
+        redoBtn.addEventListener('click', redo);
+        const savedZoom = storage.get('p2p-thumb-size', 130);
+        zoom.value = savedZoom;
+        grid.style.setProperty('--thumb', `${savedZoom}px`);
+        zoom.addEventListener('input', () => {
+            grid.style.setProperty('--thumb', `${zoom.value}px`);
+            storage.set('p2p-thumb-size', Number(zoom.value));
+        });
+        $('shortcuts-btn').addEventListener('click', () => openModal($('shortcuts-modal')));
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (editorPanel.hidden || openModals.length) return;
+            if (e.target.closest('input, textarea, select')) return;
+            const mod = e.ctrlKey || e.metaKey;
+            const k = e.key.toLowerCase();
+            if (mod && k === 'a') { e.preventDefault(); toggleSelectAll(); }
+            else if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+            else if (mod && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
+            else if (!mod && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); removeSelected(); }
+            else if (!mod && k === 'r') { rotateSelected(); }
+            else if (!mod && k === 'd') { duplicateSelected(); }
+            else if (e.key === 'Escape' && selected.size) { selected.clear(); render(); }
+        });
+
+        async function apply() {
+            const keep = kept();
+            if (!keep.length) {
+                errorEl.textContent = 'Keep at least one page.';
+                throw new Error('Keep at least one page.');
+            }
+            const data = await api(`/api/collections/${collectionId}/edit-pages`, {
+                method: 'POST',
+                json: { keep_pages: keep.map((p) => p.src), rotations_by_position: keep.map((p) => p.rot % 360) },
+            });
+            collection = data.collection;
+            load(collection);
+            return collection;
         }
-        lastScroll = scrollTop;
+
+        return {
+            load, reset, apply, isDirty,
+            get pages() { return pages; },
+            thumbUrl,
+            setError: (m) => { errorEl.textContent = m; },
+        };
+    })();
+
+    async function applyEditsIfDirty(button) {
+        if (!editor.isDirty()) return true;
+        setLoading(button, true);
+        try {
+            await editor.apply();
+            resetExportOptions();
+            toast('Page changes applied', 'success');
+            return true;
+        } catch (e) {
+            if (e instanceof SessionExpiredError) { toast(e.message, 'error'); resetAll(); return false; }
+            editor.setError(e.message);
+            return false;
+        } finally {
+            setLoading(button, false);
+        }
+    }
+
+    $('pm-btn-continue').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        if (!(await applyEditsIfDirty(btn))) return;
+        showExport();
     });
 
+    // ── Lightbox ────────────────────────────────────────────────
+    const lightbox = (() => {
+        const el = $('image-modal');
+        const img = $('modal-img');
+        const loader = $('modal-loader');
+        const caption = $('lightbox-caption');
+        const prev = $('lightbox-prev');
+        const next = $('lightbox-next');
+        let index = 0;
+
+        function show() {
+            const pages = editor.pages;
+            const page = pages[index];
+            if (!page) return;
+            loader.hidden = false;
+            img.style.opacity = '0';
+            img.onload = () => { loader.hidden = true; img.style.opacity = '1'; };
+            img.src = editor.thumbUrl(page.src, 1.6);
+            const rot = page.rot % 360;
+            img.style.transform = rot ? `rotate(${rot}deg)${rot % 180 ? ' scale(0.707)' : ''}` : '';
+            img.alt = `Page ${index + 1}`;
+            caption.textContent = `Page ${index + 1} of ${pages.length}${page.removed ? ' · removed' : ''}${page.src !== index ? ` · originally p.${page.src + 1}` : ''}`;
+            prev.disabled = index === 0;
+            next.disabled = index >= pages.length - 1;
+        }
+        function open(i) {
+            index = Math.max(0, i);
+            show();
+            openModal(el);
+        }
+        prev.addEventListener('click', () => { if (index > 0) { index--; show(); } });
+        next.addEventListener('click', () => { if (index < editor.pages.length - 1) { index++; show(); } });
+        document.addEventListener('keydown', (e) => {
+            if (el.hidden) return;
+            if (e.key === 'ArrowLeft') prev.click();
+            if (e.key === 'ArrowRight') next.click();
+        });
+        el.onclose = () => { img.removeAttribute('src'); };
+        return { open };
+    })();
+
+    // ── Index modal ─────────────────────────────────────────────
+    (() => {
+        const modal = $('index-modal');
+        const help = $('index-mode-help');
+        const textarea = $('index-entries-input');
+        const errorEl = $('index-error-message');
+        const applyBtn = $('index-apply-btn');
+        const modes = { off: $('index-off-btn'), automatic: $('index-automatic-btn'), manual: $('index-manual-btn') };
+        const HELP = {
+            off: 'Remove all bookmarks and the contents page.',
+            automatic: 'Use the bookmarks and headings detected in your sources.',
+            manual: 'One entry per line: Title | page | level (level 1–3 is optional).',
+        };
+        let mode = 'automatic';
+        function setMode(m) {
+            mode = m;
+            Object.entries(modes).forEach(([k, b]) => b.setAttribute('aria-checked', String(k === m)));
+            help.textContent = HELP[m];
+            textarea.hidden = m !== 'manual';
+            errorEl.textContent = '';
+            if (m === 'manual') textarea.focus();
+        }
+        Object.entries(modes).forEach(([k, b]) => b.addEventListener('click', () => setMode(k)));
+
+        $('pm-btn-index').addEventListener('click', async (e) => {
+            if (!(await applyEditsIfDirty(e.currentTarget))) return;
+            setMode('automatic');
+            openModal(modal);
+        });
+
+        applyBtn.addEventListener('click', async () => {
+            const total = editor.pages.length;
+            const entries = [];
+            if (mode === 'manual') {
+                const lines = textarea.value.split('\n').map((l) => l.trim()).filter(Boolean);
+                for (const line of lines) {
+                    const parts = line.split('|').map((p) => p.trim());
+                    const page = Number(parts[1]);
+                    const level = parts[2] ? Number(parts[2]) : 1;
+                    if (!parts[0] || !Number.isInteger(page) || page < 1 || page > total || ![1, 2, 3].includes(level)) {
+                        errorEl.textContent = `Check this line (pages 1–${total}, level 1–3): ${line}`;
+                        return;
+                    }
+                    entries.push({ title: parts[0], page, level });
+                }
+                if (!entries.length) { errorEl.textContent = 'Add at least one entry.'; return; }
+            }
+            setLoading(applyBtn, true);
+            try {
+                const data = await api(`/api/collections/${collectionId}/edit-index`, {
+                    method: 'POST',
+                    json: { enabled: mode !== 'off', automatic: mode !== 'manual', entries },
+                });
+                collection = data.collection;
+                editor.load(collection);
+                resetExportOptions();
+                closeModal(modal);
+                toast(mode === 'off' ? 'Index removed' : 'Index updated', 'success');
+            } catch (err) {
+                errorEl.textContent = err.message;
+            } finally {
+                setLoading(applyBtn, false);
+            }
+        });
+    })();
+
+    // ── Insert modal ────────────────────────────────────────────
+    (() => {
+        const modal = $('insert-file-modal');
+        const fileInputEl = $('insert-file-input');
+        const drop = $('insert-file-drop-zone');
+        const label = $('insert-file-label');
+        const urlEl = $('insert-url-input');
+        const position = $('insert-position-select');
+        const pageWrap = $('insert-page-number-container');
+        const pageEl = $('insert-page-number');
+        const errorEl = $('insert-error-message');
+        const confirmBtn = $('btn-confirm-insert');
+        let chosen = null;
+
+        function setFile(file) {
+            chosen = file || null;
+            label.textContent = chosen ? chosen.name : 'Choose a PDF or image';
+            if (chosen) urlEl.value = '';
+            errorEl.textContent = '';
+        }
+
+        $('pm-btn-insert-file').addEventListener('click', async (e) => {
+            if (!(await applyEditsIfDirty(e.currentTarget))) return;
+            setFile(null);
+            fileInputEl.value = '';
+            urlEl.value = '';
+            position.value = 'end';
+            pageWrap.hidden = true;
+            pageEl.value = '';
+            pageEl.max = String(editor.pages.length);
+            openModal(modal);
+        });
+        drop.addEventListener('click', () => fileInputEl.click());
+        fileInputEl.addEventListener('change', () => setFile(fileInputEl.files[0]));
+        ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('drag-over'); }));
+        ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('drag-over'); }));
+        drop.addEventListener('drop', (e) => {
+            const file = e.dataTransfer.files[0];
+            if (file) setFile(file);
+        });
+        urlEl.addEventListener('input', () => { if (urlEl.value.trim() && chosen) setFile(null); });
+        position.addEventListener('change', () => {
+            pageWrap.hidden = position.value !== 'after';
+            if (!pageWrap.hidden) pageEl.focus();
+        });
+
+        confirmBtn.addEventListener('click', async () => {
+            const url = urlEl.value.trim();
+            if (!chosen && !url) { errorEl.textContent = 'Choose a file or paste a link.'; return; }
+            if (chosen && !SUPPORTED_FILE.test(chosen.name)) { errorEl.textContent = 'Only PDF, PNG, JPG and WEBP files are supported.'; return; }
+            let pageIndex = 0;
+            const total = editor.pages.length;
+            if (position.value === 'after') {
+                const n = parseInt(pageEl.value, 10);
+                if (!Number.isInteger(n) || n < 1 || n > total) { errorEl.textContent = `Enter a page between 1 and ${total}.`; return; }
+                pageIndex = n - 1;
+            }
+            const form = new FormData();
+            if (chosen) form.append('file', chosen);
+            else form.append('url', normalizeUrl(url));
+            form.append('position', position.value);
+            form.append('page_index', String(pageIndex));
+            setLoading(confirmBtn, true, url && !chosen ? 'Fetching page…' : 'Inserting…');
+            errorEl.textContent = '';
+            try {
+                const data = await api(`/api/collections/${collectionId}/insert-file`, { method: 'POST', form });
+                const before = total;
+                collection = data.collection;
+                editor.load(collection);
+                resetExportOptions();
+                closeModal(modal);
+                const added = (collection.edited_total_pages || collection.total_pages) - before;
+                toast(`Inserted ${plural(Math.max(added, 1), 'page')}`, 'success');
+            } catch (err) {
+                errorEl.textContent = err.message;
+            } finally {
+                setLoading(confirmBtn, false, 'Insert');
+            }
+        });
+    })();
+
+    // ── Export ──────────────────────────────────────────────────
+    const dl = { sources: $('dl-sources'), pages: $('dl-pages'), size: $('dl-size') };
+    const filenameInput = $('custom-filename-input');
+    const downloadBtn = $('download-btn');
+    const previewFrame = $('pdf-preview-frame');
+    const previewLink = $('preview-open-link');
+    const opt = {
+        numbers: $('opt-page-numbers'),
+        position: $('opt-page-number-position'),
+        skipFirst: $('opt-skip-first'),
+        watermark: $('opt-watermark'),
+        password: $('opt-password'),
+    };
+    const applyExportBtn = $('apply-export-btn');
+    const exportStatus = $('export-status');
+    const exportBadge = $('export-options-badge');
+    let appliedExportKey = '';
+
+    const exportOptions = () => ({
+        page_numbers: opt.numbers.checked,
+        page_number_position: opt.position.value,
+        skip_first_page: opt.skipFirst.checked,
+        watermark: opt.watermark.value.trim() || null,
+        password: opt.password.value || null,
+        author: settings.author.value.trim() || null,
+    });
+    const exportKey = () => JSON.stringify(exportOptions());
+    const hasExportOptions = () => {
+        const o = exportOptions();
+        return Boolean(o.page_numbers || o.watermark || o.password);
+    };
+    const exportDirty = () => exportKey() !== appliedExportKey;
+
+    function resetExportOptions() {
+        // The server drops the export copy whenever the working PDF changes, so mirror that here.
+        appliedExportKey = JSON.stringify({ ...exportOptions(), page_numbers: false, watermark: null, password: null, author: null });
+        updateExportStatus();
+    }
+
+    function updateExportStatus() {
+        exportBadge.hidden = !hasExportOptions();
+        if (!hasExportOptions() && !exportDirty()) exportStatus.textContent = '';
+        else if (exportDirty()) exportStatus.textContent = 'Options will be applied when you download.';
+        else exportStatus.textContent = collection && collection.export_protected ? 'Applied · the download is password-protected.' : 'Applied to the download.';
+    }
+
+    Object.values(opt).forEach((el) => el.addEventListener(el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input', updateExportStatus));
+    opt.numbers.addEventListener('change', () => { $('page-number-options').hidden = !opt.numbers.checked; });
+
+    function downloadUrl({ inline = false } = {}) {
+        const params = new URLSearchParams();
+        const name = filenameInput.value.trim();
+        if (name) params.set('custom_filename', name);
+        if (inline) { params.set('inline', '1'); params.set('v', String(thumbVersion)); }
+        const q = params.toString();
+        return `/api/collections/${collectionId}/download${q ? `?${q}` : ''}`;
+    }
+
+    function updateExportView() {
+        if (!collection) return;
+        const done = collection.items.filter((i) => i.status === 'completed').length;
+        dl.sources.textContent = String(done);
+        dl.pages.textContent = String(collection.edited_total_pages || collection.total_pages || 0);
+        const size = collection.export_size_mb || collection.edited_size_mb || collection.final_pdf_size_mb || 0;
+        dl.size.textContent = formatMb(size);
+        downloadBtn.href = downloadUrl();
+        previewLink.href = downloadUrl({ inline: true });
+        updateExportStatus();
+    }
+
+    function refreshPreview() {
+        const src = downloadUrl({ inline: true });
+        // Password-protected exports would prompt inside the frame; preview the working copy instead.
+        previewFrame.src = collection && collection.export_protected ? `${src}&working=1` : src;
+    }
+
+    function showExport() {
+        if (!filenameInput.value.trim()) filenameInput.value = (collection && collection.title) || 'Study Material Collection';
+        updateExportView();
+        refreshPreview();
+        renderIndividual();
+        showPanel(exportPanel, 'export');
+    }
+
+    async function applyExport() {
+        setLoading(applyExportBtn, true);
+        try {
+            const data = await api(`/api/collections/${collectionId}/finalize`, { method: 'POST', json: exportOptions() });
+            collection = data.collection;
+            appliedExportKey = exportKey();
+            thumbVersion = Date.now();
+            updateExportView();
+            refreshPreview();
+            return true;
+        } catch (e) {
+            toast(e.message, 'error');
+            return false;
+        } finally {
+            setLoading(applyExportBtn, false);
+        }
+    }
+
+    applyExportBtn.addEventListener('click', async () => {
+        if (await applyExport()) toast(hasExportOptions() ? 'Export options applied' : 'Export options cleared', 'success');
+    });
+
+    filenameInput.addEventListener('input', () => { downloadBtn.href = downloadUrl(); });
+
+    downloadBtn.addEventListener('click', async (e) => {
+        if (!exportDirty()) return;
+        e.preventDefault();
+        if (await applyExport()) {
+            const a = document.createElement('a');
+            a.href = downloadUrl();
+            a.download = '';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+    });
+
+    const saveAsBtn = $('save-as-btn');
+    if (!window.showSaveFilePicker) {
+        saveAsBtn.hidden = true;
+    } else {
+        saveAsBtn.addEventListener('click', async () => {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: `${filenameInput.value.trim() || 'Page2PDF'}.pdf`,
+                    types: [{ description: 'PDF document', accept: { 'application/pdf': ['.pdf'] } }],
+                });
+                if (exportDirty() && !(await applyExport())) return;
+                setLoading(saveAsBtn, true);
+                const res = await fetch(downloadUrl());
+                if (!res.ok) throw new Error('Could not fetch the PDF.');
+                const writable = await handle.createWritable();
+                await writable.write(await res.blob());
+                await writable.close();
+                toast('Saved', 'success');
+            } catch (err) {
+                if (err && err.name !== 'AbortError') toast(err.message || 'Save failed', 'error');
+            } finally {
+                setLoading(saveAsBtn, false);
+            }
+        });
+    }
+
+    $('edit-download-btn').addEventListener('click', () => showPanel(editorPanel, 'edit'));
+    $('new-btn').addEventListener('click', async () => {
+        const ok = await confirmDialog({ title: 'Start a new collection?', body: 'Your current PDF will be cleared from this page. Download it first if you need it.', ok: 'Start new' });
+        if (ok) resetAll();
+    });
+
+    function renderIndividual() {
+        const list = $('individual-downloads-list');
+        const done = collection.items.filter((i) => i.status === 'completed' && i.filename);
+        $('individual-downloads').hidden = done.length < 2;
+        $('individual-count').textContent = `(${done.length})`;
+        list.innerHTML = done.map((item) => `
+            <li>
+                <span class="source-avatar" data-kind="${sourceKind(item)}" style="width:28px;height:28px;${avatarLetter(item).length > 1 ? 'font-size:8px' : ''}">${escapeHtml(avatarLetter(item))}</span>
+                <div class="source-body">
+                    <div class="source-title">${escapeHtml(item.title || 'Untitled')}</div>
+                    <div class="source-meta">${escapeHtml(sourceMeta(item))}</div>
+                </div>
+                <a href="/api/collections/${encodeURIComponent(collection.id)}/urls/${encodeURIComponent(item.id)}/download" download>${icon('download', 'i-sm')}PDF</a>
+            </li>`).join('');
+    }
+
+    // ── Global keys ─────────────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && openModals.length) { e.preventDefault(); closeTopModal(); }
+    });
+
+    window.addEventListener('beforeunload', (e) => {
+        if (collection && (collection.final_pdf_filename || editor.isDirty())) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    renderSources();
 })();

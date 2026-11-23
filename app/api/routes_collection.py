@@ -17,7 +17,8 @@ from app.models.schemas import (
     Collection, CollectionItem, CollectionCreateRequest,
     CollectionAddUrlRequest, CollectionReorderRequest,
     CollectionGenerateRequest, CollectionMergeRequest,
-    CollectionResponse, JobStatus, EditPagesRequest, EditIndexRequest
+    CollectionResponse, JobStatus, EditPagesRequest, EditIndexRequest,
+    FinalizeRequest,
 )
 from app.services.security import validate_url_security
 from app.services.fetcher import fetch_webpage
@@ -35,6 +36,39 @@ collections: Dict[str, Collection] = {}
 
 MAX_URLS_PER_COLLECTION = int(os.getenv("MAX_URLS_PER_COLLECTION", "20"))
 SUPPORTED_UPLOAD_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
+MAX_UPLOAD_SIZE_MB = float(os.getenv("MAX_UPLOAD_SIZE_MB", "50"))
+MIN_THUMBNAIL_ZOOM = 0.1
+MAX_THUMBNAIL_ZOOM = 3.0
+
+
+def _save_upload(upload: UploadFile, destination: Path) -> bool:
+    """Stream an upload to disk, refusing files over MAX_UPLOAD_SIZE_MB."""
+    limit = int(MAX_UPLOAD_SIZE_MB * 1024 * 1024)
+    written = 0
+    with open(destination, "wb") as buffer:
+        while chunk := upload.file.read(1024 * 1024):
+            written += len(chunk)
+            if written > limit:
+                break
+            buffer.write(chunk)
+    if written > limit:
+        destination.unlink(missing_ok=True)
+        return False
+    return True
+
+
+def _clear_export(col: Collection) -> None:
+    col.export_pdf_filename = None
+    col.export_size_mb = None
+    col.export_protected = False
+
+
+def _set_active_pdf(col: Collection, filename: str, total_pages: int, size_mb: float) -> None:
+    """Record a new working PDF and drop any export built from the old one."""
+    col.edited_pdf_filename = filename
+    col.edited_total_pages = total_pages
+    col.edited_size_mb = size_mb
+    _clear_export(col)
 
 
 @router.post("", response_model=CollectionResponse)
@@ -71,14 +105,19 @@ async def add_url_to_collection(collection_id: str, request: CollectionAddUrlReq
         if item.url == url:
             return CollectionResponse(success=False, error="This URL has already been added.")
 
-    # Preliminary extraction for title
+    is_safe, security_error = validate_url_security(url)
+    if not is_safe:
+        return CollectionResponse(success=False, error=security_error)
+
+    # Preliminary extraction for title (best effort; generation retries the fetch)
     title = None
-    is_safe, error = validate_url_security(url)
-    if is_safe:
-        html, _, _ = await fetch_webpage(url)
-        if html:
+    html, _, _ = await fetch_webpage(url)
+    if html:
+        try:
             content = await extract_content(html, url)
             title = content.title
+        except Exception as e:
+            logger.warning(f"Title extraction failed for {url}: {e}")
 
     item_id = generate_job_id()
     new_item = CollectionItem(
@@ -121,8 +160,6 @@ async def upload_file_to_collection(
     if extension not in SUPPORTED_UPLOAD_EXTENSIONS:
         return CollectionResponse(success=False, error="Only PDF, PNG, JPG, JPEG, and WEBP files are supported.")
 
-    import shutil
-    
     # Generate unique filename for the uploaded file
     file_id = generate_job_id()
     safe_stem = sanitize_filename(Path(original_name).stem) or "uploaded-file"
@@ -132,8 +169,8 @@ async def upload_file_to_collection(
     output_path = get_output_dir() / safe_filename
     
     try:
-        with open(source_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        if not _save_upload(file, source_path):
+            return CollectionResponse(success=False, error=f"File is larger than {MAX_UPLOAD_SIZE_MB:g} MB.")
         if extension != ".pdf":
             from app.services.pdf_merger import convert_image_to_pdf
             if not convert_image_to_pdf(source_path, output_path):
@@ -141,6 +178,15 @@ async def upload_file_to_collection(
                 return CollectionResponse(success=False, error="The uploaded image could not be converted to PDF.")
             source_path.unlink(missing_ok=True)
         else:
+            try:
+                with fitz.open(source_path) as probe:
+                    needs_password = probe.needs_pass
+            except Exception:
+                source_path.unlink(missing_ok=True)
+                return CollectionResponse(success=False, error="This file is not a valid PDF.")
+            if needs_password:
+                source_path.unlink(missing_ok=True)
+                return CollectionResponse(success=False, error="Password-protected PDFs can't be edited. Remove the password first.")
             source_path.replace(output_path)
     except Exception as e:
         logger.error(f"Failed to save uploaded file: {e}")
@@ -377,6 +423,16 @@ async def merge_collection(collection_id: str, request: CollectionMergeRequest):
     if not filename:
          return CollectionResponse(success=False, error="Failed to merge PDFs.")
          
+    if request.author and request.author.strip():
+        try:
+            with fitz.open(get_output_dir() / filename) as merged:
+                metadata = dict(merged.metadata or {})
+                metadata["author"] = request.author.strip()
+                merged.set_metadata(metadata)
+                merged.saveIncr()
+        except Exception as e:
+            logger.warning(f"Could not set author metadata: {e}")
+
     col.title = title
     col.final_pdf_filename = filename
     col.final_pdf_size_mb = size_mb
@@ -387,7 +443,8 @@ async def merge_collection(collection_id: str, request: CollectionMergeRequest):
     col.edited_pdf_filename = None
     col.edited_total_pages = None
     col.edited_size_mb = None
-    
+    _clear_export(col)
+
     return CollectionResponse(success=True, collection=col)
 
 
@@ -406,17 +463,15 @@ async def apply_page_edits(collection_id: str, request: EditPagesRequest):
     
     filename, total_pages, size_mb = edit_pdf_pages(
         current_pdf,
-        request.keep_pages, 
-        request.rotations
+        request.keep_pages,
+        request.rotations,
+        request.rotations_by_position,
     )
     
     if not filename:
-         return CollectionResponse(success=False, error="Failed to edit PDF pages.")
-         
-    col.edited_pdf_filename = filename
-    col.edited_total_pages = total_pages
-    col.edited_size_mb = size_mb
-    
+        return CollectionResponse(success=False, error="Failed to edit PDF pages.")
+
+    _set_active_pdf(col, filename, total_pages, size_mb)
     return CollectionResponse(success=True, collection=col)
 
 
@@ -485,9 +540,7 @@ async def apply_index_edits(collection_id: str, request: EditIndexRequest):
         page_count = len(document)
         document.close()
 
-        col.edited_pdf_filename = output_filename
-        col.edited_total_pages = page_count
-        col.edited_size_mb = output_path.stat().st_size / (1024 * 1024)
+        _set_active_pdf(col, output_filename, page_count, output_path.stat().st_size / (1024 * 1024))
         return CollectionResponse(success=True, collection=col)
     except Exception as e:
         logger.error(f"Error applying PDF index: {e}", exc_info=True)
@@ -509,6 +562,7 @@ async def get_thumbnail(collection_id: str, page_index: int, zoom: float = 0.5):
          
     from app.services.pdf_merger import get_pdf_thumbnail
     
+    zoom = min(max(zoom, MIN_THUMBNAIL_ZOOM), MAX_THUMBNAIL_ZOOM)
     img_bytes = get_pdf_thumbnail(current_pdf, page_index, zoom=zoom)
     
     if not img_bytes:
@@ -517,22 +571,31 @@ async def get_thumbnail(collection_id: str, page_index: int, zoom: float = 0.5):
     return Response(
         content=img_bytes,
         media_type="image/png",
-        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+        # The client busts this with ?v=<version> whenever the working PDF changes.
+        headers={"Cache-Control": "private, max-age=600"},
     )
 
 
 @router.get("/{collection_id}/download")
-async def download_merged_pdf(collection_id: str, custom_filename: Optional[str] = None):
-    """Download the final (or edited) merged PDF."""
+async def download_merged_pdf(
+    collection_id: str,
+    custom_filename: Optional[str] = None,
+    inline: bool = False,
+    working: bool = False,
+):
+    """Download the export (or edited/merged) PDF.
+    inline=1 opens it in the browser; working=1 skips the export copy (used by the preview)."""
     if collection_id not in collections:
         raise HTTPException(status_code=404, detail="Collection not found")
         
     col = collections[collection_id]
     
     target_filename = col.edited_pdf_filename or col.final_pdf_filename
-    
+    if col.export_pdf_filename and not working:
+        target_filename = col.export_pdf_filename
+
     if not target_filename:
-         raise HTTPException(status_code=400, detail="Collection has not been merged yet")
+        raise HTTPException(status_code=400, detail="Collection has not been merged yet")
          
     filepath = get_output_dir() / target_filename
     if not filepath.exists():
@@ -542,12 +605,56 @@ async def download_merged_pdf(collection_id: str, custom_filename: Optional[str]
         safe_name = sanitize_filename(custom_filename.strip()) + ".pdf"
     else:
         safe_name = sanitize_filename(col.title) + ".pdf"
+    disposition = "inline" if inline else "attachment"
     return FileResponse(
         path=str(filepath),
         filename=safe_name,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+        headers={
+            "Content-Disposition": f'{disposition}; filename="{safe_name}"',
+            "Cache-Control": "no-store",
+        },
     )
+
+
+@router.post("/{collection_id}/finalize", response_model=CollectionResponse)
+async def finalize_collection_pdf(collection_id: str, request: FinalizeRequest):
+    """Build the export copy with page numbers, watermark, metadata and password."""
+    if collection_id not in collections:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    col = collections[collection_id]
+    current_pdf = col.edited_pdf_filename or col.final_pdf_filename
+    if not current_pdf:
+        return CollectionResponse(success=False, error="Collection has not been merged yet.")
+
+    password = (request.password or "").strip() or None
+    watermark = (request.watermark or "").strip() or None
+    author = (request.author or "").strip() or None
+    if not (request.page_numbers or watermark or password or author):
+        _clear_export(col)
+        return CollectionResponse(success=True, collection=col)
+
+    from app.services.pdf_merger import finalize_pdf
+
+    filename, size_mb = finalize_pdf(
+        current_pdf,
+        page_numbers=request.page_numbers,
+        page_number_position=request.page_number_position.value,
+        skip_first_page=request.skip_first_page,
+        watermark=watermark,
+        watermark_opacity=request.watermark_opacity,
+        password=password,
+        title=col.title,
+        author=author,
+    )
+    if not filename:
+        return CollectionResponse(success=False, error="Failed to apply export options.")
+
+    col.export_pdf_filename = filename
+    col.export_size_mb = size_mb
+    col.export_protected = bool(password)
+    return CollectionResponse(success=True, collection=col)
 
 
 @router.get("/{collection_id}/urls/{url_id}/download")
@@ -628,13 +735,12 @@ async def insert_file_into_collection_pdf(
         if extension not in SUPPORTED_UPLOAD_EXTENSIONS:
             return CollectionResponse(success=False, error="Only PDF, PNG, JPG, JPEG, and WEBP files are supported.")
 
-        import shutil
-        safe_filename = f"insert_{generate_job_id()}_{sanitize_filename(original_name)}"
+        safe_filename = f"insert_{generate_job_id()}_{sanitize_filename(Path(original_name).stem)}{extension}"
         insert_path = get_output_dir() / safe_filename
         temporary_insert_path = True
         try:
-            with open(insert_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+            if not _save_upload(file, insert_path):
+                return CollectionResponse(success=False, error=f"File is larger than {MAX_UPLOAD_SIZE_MB:g} MB.")
         except Exception as e:
             logger.error(f"Failed to save inserted file: {e}")
             return CollectionResponse(success=False, error="Failed to save uploaded file.")
@@ -643,14 +749,12 @@ async def insert_file_into_collection_pdf(
     
     new_filename, total_pages, size_mb = insert_file_into_pdf(current_pdf, insert_path, position, page_index)
     
+    if temporary_insert_path:
+        insert_path.unlink(missing_ok=True)
+
     if not new_filename:
         return CollectionResponse(success=False, error="Failed to merge inserted file.")
 
-    if temporary_insert_path:
-        insert_path.unlink(missing_ok=True)
-        
-    col.edited_pdf_filename = new_filename
-    col.edited_total_pages = total_pages
-    col.edited_size_mb = size_mb
+    _set_active_pdf(col, new_filename, total_pages, size_mb)
     
     return CollectionResponse(success=True, collection=col)

@@ -3,654 +3,595 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Page2PDF — Turn any webpage into a clean, beautifully formatted PDF. Save articles, tutorials, documentation, and study materials for offline reading.">
-    <meta name="keywords" content="webpage to pdf, article to pdf, study notes, documentation pdf, url to pdf">
-    <title>Page2PDF — Turn Any Webpage Into a Clean PDF</title>
+    <meta name="description" content="Page2PDF — Turn webpages, PDFs and images into one clean, beautifully formatted PDF. Merge, reorder, rotate, number and protect pages before you download.">
+    <meta name="keywords" content="webpage to pdf, article to pdf, merge pdf, study notes, documentation pdf, url to pdf">
+    <meta name="theme-color" content="#0b0b12">
+    <title>Page2PDF Studio — Webpages to Clean PDFs</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236d5efc'/%3E%3Cpath d='M10 8h8l5 5v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z' fill='white'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=4">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css?v=10">
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('p2p-theme');
+                if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body>
+    <!-- ─── Icon sprite ─────────────────────────────────────────── -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+            <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+            <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+            <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+            <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+            <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+            <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+            <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+            <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+            <symbol id="i-up" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></symbol>
+            <symbol id="i-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+            <symbol id="i-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+            <symbol id="i-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+            <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M21 13a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/></symbol>
+            <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></symbol>
+            <symbol id="i-settings" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+            <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+            <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></symbol>
+            <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+            <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+            <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+            <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></symbol>
+            <symbol id="i-redo" viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></symbol>
+            <symbol id="i-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+            <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4v16"/><path d="M3 8l4-4 4 4"/><path d="M17 20V4"/><path d="M21 16l-4 4-4-4"/></symbol>
+            <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+            <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+            <symbol id="i-hash" viewBox="0 0 24 24"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></symbol>
+            <symbol id="i-stamp" viewBox="0 0 24 24"><path d="M5 22h14"/><path d="M19.27 13.73A2.5 2.5 0 0 0 17.5 13h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.66-.26-1.3-.73-1.77Z"/><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13"/></symbol>
+            <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+            <symbol id="i-external" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
+            <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+            <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+            <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+            <symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+            <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></symbol>
+            <symbol id="i-code" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></symbol>
+            <symbol id="i-layers" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
+            <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+            <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+            <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></symbol>
+        </defs>
+    </svg>
+
     <!-- ─── Navigation ──────────────────────────────────────────── -->
     <nav class="navbar" id="navbar">
         <div class="nav-container">
-            <a href="/" class="nav-logo" id="nav-logo">
-                <span class="logo-icon">
-                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="2" y="2" width="24" height="24" rx="6" fill="url(#logo-gradient)"/>
-                        <path d="M8 8h8l4 4v8a2 2 0 01-2 2H10a2 2 0 01-2-2V8z" fill="white" fill-opacity="0.9"/>
-                        <path d="M16 8v4h4" fill="white" fill-opacity="0.5"/>
-                        <line x1="10" y1="14" x2="18" y2="14" stroke="#6366f1" stroke-width="1.5" stroke-linecap="round"/>
-                        <line x1="10" y1="17" x2="16" y2="17" stroke="#6366f1" stroke-width="1.5" stroke-linecap="round"/>
-                        <defs>
-                            <linearGradient id="logo-gradient" x1="2" y1="2" x2="26" y2="26">
-                                <stop stop-color="#6366f1"/>
-                                <stop offset="1" stop-color="#8b5cf6"/>
-                            </linearGradient>
-                        </defs>
-                    </svg>
+            <a href="/" class="nav-logo" id="nav-logo" aria-label="Page2PDF home">
+                <span class="logo-mark" aria-hidden="true">
+                    <svg viewBox="0 0 28 28" width="28" height="28"><rect x="1" y="1" width="26" height="26" rx="8" fill="var(--accent)"/><path d="M9 7.5h7l4.5 4.5v8.5a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2z" fill="#fff"/><path d="M16 7.5V12h4.5" fill="#fff" fill-opacity=".55"/><path d="M10 15h7M10 18h5" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/></svg>
                 </span>
-                <span class="logo-text">Page2PDF</span>
+                <span class="logo-text">Page2PDF <span class="logo-sub">Studio</span></span>
             </a>
-            <div class="nav-links">
-                <a href="#home" class="nav-link" id="nav-home">Home</a>
-                <a href="#how-it-works" class="nav-link" id="nav-how">How It Works</a>
-                <a href="#about" class="nav-link" id="nav-about">About</a>
+            <div class="nav-links" id="nav-links">
+                <a href="#home" class="nav-link">Workspace</a>
+                <a href="#how-it-works" class="nav-link">How it works</a>
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#about" class="nav-link">About</a>
             </div>
-            <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
+            <div class="nav-actions">
+                <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch colour theme" title="Switch theme">
+                    <svg class="i i-theme-dark"><use href="#i-moon"/></svg>
+                    <svg class="i i-theme-light"><use href="#i-sun"/></svg>
+                </button>
+                <button class="icon-btn nav-toggle" id="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+                    <svg class="i"><use href="#i-list"/></svg>
+                </button>
+            </div>
         </div>
     </nav>
 
-    <!-- ─── Hero Section ────────────────────────────────────────── -->
-    <section class="hero" id="home">
-        <div class="hero-bg">
-            <div class="hero-glow"></div>
-            <div class="hero-grid"></div>
-        </div>
-        <div class="hero-content">
-            <div class="hero-badge">
-                <span class="badge-dot"></span>
-                Free & Open Source
+    <main>
+        <!-- ─── Hero / Composer ─────────────────────────────────── -->
+        <section class="hero" id="home">
+            <div class="hero-bg" aria-hidden="true">
+                <div class="hero-glow"></div>
+                <div class="hero-grid"></div>
             </div>
-            <h1 class="hero-title">
-                Turn Any Webpage Into<br>
-                <span class="gradient-text">a Clean PDF</span>
-            </h1>
-            <p class="hero-subtitle">
-                Save articles, tutorials, documentation, and study materials as beautifully formatted PDFs. 
-                Smart content extraction removes clutter and preserves what matters.
-            </p>
 
-            <!-- ─── URL Input & Collection List ───────────────────── -->
-            <div class="input-section">
-                <div class="input-wrapper" id="input-wrapper">
-                    <div class="input-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                        </svg>
-                    </div>
-                    <input 
-                        type="url" 
-                        id="url-input" 
-                        class="url-input" 
-                        placeholder="Paste webpage URL here..."
-                        autocomplete="off"
-                        spellcheck="false"
-                    >
-                    <button class="add-url-btn" id="add-url-btn" type="button">
-                        <span class="btn-text">Add URL +</span>
-                    </button>
-                </div>
-                
-                <div style="display: flex; align-items: center; justify-content: center; margin: 20px 0; gap: 16px; max-width: 600px; margin-left: auto; margin-right: auto;">
-                    <div style="height: 1px; background: rgba(255,255,255,0.1); flex: 1;"></div>
-                    <span style="color: rgba(255,255,255,0.4); font-size: 13px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase;">or</span>
-                    <div style="height: 1px; background: rgba(255,255,255,0.1); flex: 1;"></div>
-                </div>
+            <div class="hero-content">
+                <div class="hero-badge"><span class="badge-dot"></span> Free &amp; open source</div>
+                <h1 class="hero-title">Turn any webpage into<br><span class="gradient-text">a clean, study-ready PDF</span></h1>
+                <p class="hero-subtitle">Collect articles, tutorials, PDFs and images, then merge, reorder and polish them into one document — no ads, no clutter.</p>
 
-                <div class="upload-wrapper" style="display: flex; justify-content: center; margin-bottom: 16px;">
-                    <input type="file" id="pdf-upload-input" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp" multiple style="display: none;">
-                    <button class="upload-pdf-btn upload-drop-zone" id="upload-pdf-btn" type="button" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 600px; padding: 14px 24px; background: rgba(168, 85, 247, 0.05); border: 1px dashed rgba(168, 85, 247, 0.4); border-radius: 12px; color: #d8b4fe; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(168, 85, 247, 0.1)'; this.style.borderColor='rgba(168, 85, 247, 0.8)'" onmouseout="this.style.background='rgba(168, 85, 247, 0.05)'; this.style.borderColor='rgba(168, 85, 247, 0.4)'">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="17 8 12 3 7 8"></polyline>
-                            <line x1="12" y1="3" x2="12" y2="15"></line>
-                        </svg>
-                        Upload PDF or Image to Edit or Merge
-                    </button>
-                </div>
-                
-                <div class="error-message" id="error-message"></div>
-                
-                <div class="url-list-container" id="url-list-container" style="display: none;">
-                    <div class="url-list" id="url-list">
-                        <!-- URL items will be injected here by JS -->
+                <div class="composer" id="composer">
+                    <div class="composer-drop-overlay" aria-hidden="true">
+                        <svg class="i i-xl"><use href="#i-upload"/></svg>
+                        <span>Drop PDFs, images or links to add them</span>
                     </div>
-                    <div class="collection-actions">
-                        <button class="generate-btn" id="generate-all-btn" type="button">
-                            <span class="btn-text">Generate All PDFs</span>
-                            <span class="btn-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                                </svg>
-                            </span>
+
+                    <div class="url-bar" id="input-wrapper">
+                        <svg class="i url-bar-icon"><use href="#i-link"/></svg>
+                        <input type="url" id="url-input" class="url-input" placeholder="Paste a link — or several at once" autocomplete="off" spellcheck="false" aria-label="Webpage URL">
+                        <kbd class="kbd-hint" aria-hidden="true">Enter</kbd>
+                        <button class="btn btn-primary" id="add-url-btn" type="button">
+                            <svg class="i"><use href="#i-plus"/></svg><span>Add</span>
                         </button>
                     </div>
-                </div>
-            </div>
 
-            <!-- ─── Settings Toggle ─────────────────────────────── -->
-            <button class="settings-toggle" id="settings-toggle" type="button">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-                <span>PDF Settings</span>
-                <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="6 9 12 15 18 9"/>
-                </svg>
-            </button>
+                    <div class="composer-divider"><span>or</span></div>
 
-            <!-- ─── Settings Panel ──────────────────────────────── -->
-            <div class="settings-panel" id="settings-panel">
-                <div class="settings-grid">
-                    <div class="setting-group">
-                        <label for="setting-title" class="setting-label">Document Title</label>
-                        <input type="text" id="setting-title" class="setting-input" placeholder="Auto-detected from page">
-                    </div>
-                    <div class="setting-group">
-                        <label for="setting-author" class="setting-label">Author</label>
-                        <input type="text" id="setting-author" class="setting-input" placeholder="Optional">
-                    </div>
-                    <div class="setting-group">
-                        <label for="setting-page-size" class="setting-label">Page Size</label>
-                        <select id="setting-page-size" class="setting-select">
-                            <option value="A4" selected>A4</option>
-                            <option value="Letter">Letter</option>
-                        </select>
-                    </div>
-                    <div class="setting-group">
-                        <label for="setting-font-size" class="setting-label">Font Size</label>
-                        <select id="setting-font-size" class="setting-select">
-                            <option value="small">Small</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="large">Large</option>
-                        </select>
-                    </div>
-                    <div class="setting-group">
-                        <label for="setting-font-family" class="setting-label">Font Family</label>
-                        <select id="setting-font-family" class="setting-select">
-                            <option value="system" selected>System Default</option>
-                            <option value="sans-serif">Sans-Serif (Inter/Roboto)</option>
-                            <option value="serif">Serif (Times New Roman)</option>
-                            <option value="monospace">Monospace</option>
-                        </select>
-                    </div>
-                    <div class="setting-group setting-toggle-group">
-                        <label class="setting-label">Include Images</label>
-                        <label class="toggle" for="setting-images">
-                            <input type="checkbox" id="setting-images" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-group setting-toggle-group">
-                        <label class="setting-label">Include Links</label>
-                        <label class="toggle" for="setting-links">
-                            <input type="checkbox" id="setting-links" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-group setting-toggle-group">
-                        <div>
-                            <label class="setting-label">First-page Contents</label>
-                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">Create a clickable Contents page</div>
+                    <input type="file" id="pdf-upload-input" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp" multiple hidden>
+                    <button class="dropzone" id="upload-pdf-btn" type="button">
+                        <span class="dropzone-icon"><svg class="i"><use href="#i-upload"/></svg></span>
+                        <span class="dropzone-text">
+                            <strong>Upload PDFs or images</strong>
+                            <small>Click to browse, or drop files anywhere on this card · PDF, PNG, JPG, WEBP</small>
+                        </span>
+                    </button>
+
+                    <p class="form-error" id="error-message" role="alert"></p>
+
+                    <div class="source-list-wrap" id="url-list-container" hidden>
+                        <div class="source-list-head">
+                            <span class="source-count" id="source-count">0 sources</span>
+                            <button class="link-btn" id="clear-sources-btn" type="button">Clear all</button>
                         </div>
-                        <label class="toggle" for="setting-toc">
-                            <input type="checkbox" id="setting-toc" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
+                        <ol class="source-list" id="url-list"></ol>
                     </div>
-                    <div class="setting-group setting-toggle-group">
-                        <label class="setting-label">Code Blocks</label>
-                        <label class="toggle" for="setting-code">
-                            <input type="checkbox" id="setting-code" checked>
-                            <span class="toggle-slider"></span>
-                        </label>
+
+                    <div class="composer-footer">
+                        <button class="btn btn-ghost" id="settings-toggle" type="button" aria-expanded="false" aria-controls="settings-panel">
+                            <svg class="i"><use href="#i-settings"/></svg><span>PDF settings</span>
+                            <svg class="i chevron"><use href="#i-down"/></svg>
+                        </button>
+                        <button class="btn btn-primary btn-lg" id="generate-all-btn" type="button" disabled>
+                            <span class="btn-text">Build PDF</span>
+                            <svg class="i btn-arrow"><use href="#i-arrow-right"/></svg>
+                        </button>
                     </div>
-                    <div class="setting-group setting-toggle-group" style="grid-column: 1 / -1; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; margin-top: 0.5rem;">
-                        <h4 style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #a1a1aa;">Merge Options</h4>
-                    </div>
-                    <div class="setting-group setting-toggle-group">
-                        <label class="setting-label">Cover Page</label>
-                        <label class="toggle" for="setting-cover">
-                            <input type="checkbox" id="setting-cover">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-group setting-toggle-group">
-                        <label class="setting-label">Source Separator</label>
-                        <label class="toggle" for="setting-separator">
-                            <input type="checkbox" id="setting-separator">
-                            <span class="toggle-slider"></span>
-                        </label>
+
+                    <div class="settings-panel" id="settings-panel">
+                        <div class="settings-inner">
+                            <fieldset class="settings-group">
+                                <legend>Document</legend>
+                                <div class="field-row">
+                                    <label class="field">
+                                        <span class="field-label">Title</span>
+                                        <input type="text" id="setting-title" class="input" placeholder="Study Material Collection">
+                                    </label>
+                                    <label class="field">
+                                        <span class="field-label">Author</span>
+                                        <input type="text" id="setting-author" class="input" placeholder="Optional">
+                                    </label>
+                                </div>
+                            </fieldset>
+                            <fieldset class="settings-group">
+                                <legend>Layout</legend>
+                                <div class="field-row field-row-3">
+                                    <label class="field">
+                                        <span class="field-label">Page size</span>
+                                        <select id="setting-page-size" class="input">
+                                            <option value="A4" selected>A4</option>
+                                            <option value="Letter">Letter</option>
+                                        </select>
+                                    </label>
+                                    <label class="field">
+                                        <span class="field-label">Font size</span>
+                                        <select id="setting-font-size" class="input">
+                                            <option value="small">Small</option>
+                                            <option value="medium" selected>Medium</option>
+                                            <option value="large">Large</option>
+                                        </select>
+                                    </label>
+                                    <label class="field">
+                                        <span class="field-label">Font family</span>
+                                        <select id="setting-font-family" class="input">
+                                            <option value="system" selected>System</option>
+                                            <option value="sans-serif">Sans-serif</option>
+                                            <option value="serif">Serif</option>
+                                            <option value="monospace">Monospace</option>
+                                        </select>
+                                    </label>
+                                </div>
+                            </fieldset>
+                            <fieldset class="settings-group">
+                                <legend>Content</legend>
+                                <div class="switch-grid">
+                                    <label class="switch-row"><span>Images</span><input type="checkbox" class="switch" id="setting-images" checked></label>
+                                    <label class="switch-row"><span>Links</span><input type="checkbox" class="switch" id="setting-links" checked></label>
+                                    <label class="switch-row"><span>Code blocks</span><input type="checkbox" class="switch" id="setting-code" checked></label>
+                                    <label class="switch-row"><span>Contents page <small>Clickable, first page</small></span><input type="checkbox" class="switch" id="setting-toc" checked></label>
+                                </div>
+                            </fieldset>
+                            <fieldset class="settings-group">
+                                <legend>When merging</legend>
+                                <div class="switch-grid">
+                                    <label class="switch-row"><span>Cover page</span><input type="checkbox" class="switch" id="setting-cover"></label>
+                                    <label class="switch-row"><span>Source separators</span><input type="checkbox" class="switch" id="setting-separator"></label>
+                                </div>
+                            </fieldset>
+                            <p class="settings-note">Your settings are remembered on this device.</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- ─── Example URLs ────────────────────────────────── -->
-            <div class="examples" id="examples-section">
-                <span class="examples-label">Try with:</span>
-                <div class="example-chips">
-                    <button class="example-chip" data-url="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions" type="button">MDN — JS Functions</button>
-                    <button class="example-chip" data-url="https://docs.python.org/3/tutorial/classes.html" type="button">Python — Classes</button>
-                    <button class="example-chip" data-url="https://www.geeksforgeeks.org/binary-search/" type="button">GFG — Binary Search</button>
-                    <button class="example-chip" data-url="https://en.wikipedia.org/wiki/Machine_learning" type="button">Wikipedia — ML</button>
+                <div class="examples" id="examples-section">
+                    <span class="examples-label">Try:</span>
+                    <button class="chip" data-url="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions" type="button">MDN · JS Functions</button>
+                    <button class="chip" data-url="https://docs.python.org/3/tutorial/classes.html" type="button">Python · Classes</button>
+                    <button class="chip" data-url="https://www.geeksforgeeks.org/binary-search/" type="button">GFG · Binary Search</button>
+                    <button class="chip" data-url="https://en.wikipedia.org/wiki/Machine_learning" type="button">Wikipedia · ML</button>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- ─── Progress Section ────────────────────────────────────── -->
-    <section class="progress-section" id="progress-section">
-        <div class="progress-container">
-            <div class="progress-header">
-                <div class="progress-icon-wrapper">
-                    <div class="progress-spinner" id="progress-spinner"></div>
-                    <svg class="progress-check" id="progress-check" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 6L9 17l-5-5"/>
-                    </svg>
+        <!-- ─── Workspace (progress → edit → export) ────────────── -->
+        <section class="workspace" id="workspace" hidden>
+            <div class="workspace-inner">
+                <ol class="stepper" id="stepper" aria-label="Progress">
+                    <li class="stepper-step" data-step="build"><span class="stepper-dot">1</span><span>Build</span></li>
+                    <li class="stepper-step" data-step="edit"><span class="stepper-dot">2</span><span>Edit pages</span></li>
+                    <li class="stepper-step" data-step="export"><span class="stepper-dot">3</span><span>Export</span></li>
+                </ol>
+
+                <!-- Build / progress -->
+                <div class="panel panel-narrow" id="progress-panel">
+                    <div class="progress-head">
+                        <div class="progress-ring" id="progress-ring">
+                            <svg viewBox="0 0 64 64" aria-hidden="true"><circle class="ring-track" cx="32" cy="32" r="28"/><circle class="ring-fill" id="ring-fill" cx="32" cy="32" r="28"/></svg>
+                            <span class="progress-percent" id="progress-percent">0%</span>
+                        </div>
+                        <div>
+                            <h2 class="panel-title" id="progress-title">Building your PDF…</h2>
+                            <p class="panel-sub" id="progress-subtitle">This usually takes a few seconds per source</p>
+                        </div>
+                    </div>
+                    <ol class="progress-list" id="progress-steps"></ol>
+                    <div class="panel-actions" id="progress-actions" hidden>
+                        <button class="btn btn-ghost" id="progress-back-btn" type="button"><svg class="i"><use href="#i-left"/></svg>Back to sources</button>
+                        <button class="btn btn-primary" id="progress-merge-btn" type="button">Continue with the rest<svg class="i"><use href="#i-arrow-right"/></svg></button>
+                    </div>
                 </div>
-                <h2 class="progress-title" id="progress-title">Generating your PDF...</h2>
-                <p class="progress-subtitle" id="progress-subtitle">This usually takes a few seconds</p>
-            </div>
 
-            <div class="progress-bar-wrapper">
-                <div class="progress-bar" id="progress-bar">
-                    <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                <!-- Error -->
+                <div class="panel panel-narrow panel-error" id="error-section" hidden>
+                    <div class="error-icon"><svg class="i i-xl"><use href="#i-alert"/></svg></div>
+                    <h2 class="panel-title">Something went wrong</h2>
+                    <p class="panel-sub" id="error-detail"></p>
+                    <div class="panel-actions">
+                        <button class="btn btn-ghost" id="retry-btn" type="button"><svg class="i"><use href="#i-left"/></svg>Back to sources</button>
+                    </div>
                 </div>
-                <span class="progress-percent" id="progress-percent">0%</span>
-            </div>
 
-            <div class="progress-steps" id="progress-steps">
-                <!-- Status steps or URL list status will be shown here -->
-            </div>
+                <!-- Page editor -->
+                <div class="panel panel-wide" id="page-management-section" hidden>
+                    <header class="editor-head">
+                        <div>
+                            <h2 class="panel-title">Edit pages</h2>
+                            <p class="panel-sub">Click to select · drag to reorder · <button class="link-btn" id="shortcuts-btn" type="button"><svg class="i i-sm"><use href="#i-keyboard"/></svg>shortcuts</button></p>
+                        </div>
+                        <div class="stat-pills">
+                            <span class="pill" id="pm-total">0 pages</span>
+                            <span class="pill pill-success" id="pm-kept">0 kept</span>
+                            <span class="pill pill-danger" id="pm-removed">0 removed</span>
+                            <span class="pill pill-accent" id="pm-selected">0 selected</span>
+                        </div>
+                    </header>
 
-            <!-- Page Management Section -->
-            <div class="page-management-section" id="page-management-section" style="display: none; margin-top: 2rem;">
-                <div class="management-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; text-align: left;">
-                    <!-- Header -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 16px;">
-                        <div style="display: flex; align-items: center; gap: 14px;">
-                            <div style="width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, rgba(124,92,252,0.15), rgba(168,85,247,0.1)); display: flex; align-items: center; justify-content: center;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9b82ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                            </div>
+                    <div class="editor-toolbar" role="toolbar" aria-label="Page tools">
+                        <div class="tool-group">
+                            <button class="tool-btn" id="pm-undo" type="button" title="Undo (Ctrl+Z)" aria-label="Undo"><svg class="i"><use href="#i-undo"/></svg></button>
+                            <button class="tool-btn" id="pm-redo" type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg class="i"><use href="#i-redo"/></svg></button>
+                        </div>
+                        <div class="tool-group">
+                            <button class="tool-btn" id="pm-btn-select-all" type="button" title="Select all (Ctrl+A)">Select all</button>
+                            <button class="tool-btn" id="pm-btn-remove-selected" type="button" title="Remove selected (Delete)"><svg class="i"><use href="#i-trash"/></svg>Remove</button>
+                            <button class="tool-btn" id="pm-btn-keep-selected" type="button" title="Keep only the selected pages">Keep only</button>
+                            <button class="tool-btn" id="pm-btn-rotate-selected" type="button" title="Rotate selected (R)"><svg class="i"><use href="#i-rotate"/></svg>Rotate</button>
+                            <button class="tool-btn" id="pm-btn-duplicate" type="button" title="Duplicate selected (D)"><svg class="i"><use href="#i-copy"/></svg>Duplicate</button>
+                        </div>
+                        <div class="tool-group">
+                            <button class="tool-btn" id="pm-btn-reverse" type="button" title="Reverse page order"><svg class="i"><use href="#i-swap"/></svg>Reverse</button>
+                            <button class="tool-btn" id="pm-btn-restore-all" type="button" title="Undo every change since the last apply">Reset</button>
+                        </div>
+                        <div class="tool-group tool-range">
+                            <input type="text" id="pm-range-input" class="input input-sm mono" placeholder="e.g. 1-5, 8" aria-label="Page range">
+                            <button class="tool-btn" id="pm-btn-range-select" type="button" title="Select these pages">Select</button>
+                            <button class="tool-btn" id="pm-btn-apply-range" type="button" title="Keep only these pages">Keep</button>
+                        </div>
+                        <div class="tool-group tool-end">
+                            <label class="zoom-control" title="Thumbnail size">
+                                <svg class="i i-sm"><use href="#i-grid"/></svg>
+                                <input type="range" id="pm-zoom" min="90" max="220" value="130" aria-label="Thumbnail size">
+                            </label>
+                            <button class="tool-btn" id="pm-btn-index" type="button"><svg class="i"><use href="#i-list"/></svg>Index</button>
+                            <button class="tool-btn tool-btn-accent" id="pm-btn-insert-file" type="button"><svg class="i"><use href="#i-plus"/></svg>Insert</button>
+                        </div>
+                    </div>
+
+                    <p class="form-error" id="pm-error-message" role="alert"></p>
+
+                    <div class="thumb-grid-wrap">
+                        <div class="thumb-grid" id="pm-thumbnails-grid"></div>
+                    </div>
+
+                    <footer class="editor-footer">
+                        <span class="dirty-note" id="pm-dirty-note" hidden><span class="dirty-dot"></span>Unapplied changes</span>
+                        <button class="btn btn-primary btn-lg" id="pm-btn-continue" type="button">
+                            <span class="btn-text">Continue to export</span>
+                            <svg class="i btn-arrow"><use href="#i-arrow-right"/></svg>
+                        </button>
+                    </footer>
+                </div>
+
+                <!-- Export -->
+                <div class="panel panel-wide export" id="download-section" hidden>
+                    <div class="export-preview">
+                        <div class="preview-frame-wrap">
+                            <iframe id="pdf-preview-frame" title="PDF preview" loading="lazy"></iframe>
+                        </div>
+                        <a class="link-btn preview-open" id="preview-open-link" href="#" target="_blank" rel="noopener"><svg class="i i-sm"><use href="#i-external"/></svg>Open preview in a new tab</a>
+                    </div>
+
+                    <div class="export-side">
+                        <div class="export-head">
+                            <span class="success-badge"><svg class="i"><use href="#i-check"/></svg></span>
                             <div>
-                                <h3 style="font-size: 20px; font-weight: 800; margin: 0; letter-spacing: -0.3px;">Edit Final PDF</h3>
-                                <p style="font-size: 12px; color: var(--text-muted); margin: 2px 0 0 0;">Select, remove, rotate, or reorder pages</p>
+                                <h2 class="panel-title" id="download-title">Your PDF is ready</h2>
+                                <p class="panel-sub">Fine-tune the export, then download.</p>
                             </div>
                         </div>
-                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                            <div style="font-size: 13px; color: var(--text-muted); background: rgba(255,255,255,0.03); padding: 8px 18px; border-radius: 100px; border: 1px solid var(--glass-border); backdrop-filter: blur(8px);">
-                                <span id="pm-total">Total: 0</span> &bull; 
-                                <span id="pm-kept" style="color: var(--success); font-weight: 600;">Kept: 0</span> &bull; 
-                                <span id="pm-removed" style="color: var(--error); font-weight: 600;">Removed: 0</span>
-                            </div>
-                            <button id="pm-btn-insert-file" type="button" style="background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(236,72,153,0.05)); border: 1px dashed rgba(168,85,247,0.4); color: #d8b4fe; padding: 8px 18px; border-radius: 100px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.25s ease; font-family: var(--font);" onmouseover="this.style.background='linear-gradient(135deg, rgba(168,85,247,0.2), rgba(236,72,153,0.1))'; this.style.boxShadow='0 0 25px rgba(168,85,247,0.15)'" onmouseout="this.style.background='linear-gradient(135deg, rgba(168,85,247,0.1), rgba(236,72,153,0.05))'; this.style.boxShadow='none'">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                Insert PDF / Image
-                            </button>
-                            <button id="pm-btn-index" class="pm-btn" type="button">Configure Index</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Controls -->
-                    <div style="display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; align-items: stretch;">
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <button id="pm-btn-select-all" class="pm-btn" type="button">Select All</button>
-                            <button id="pm-btn-remove-last" class="pm-btn" type="button">Remove Last</button>
-                            <button id="pm-btn-remove-selected" class="pm-btn" type="button">Remove Selected</button>
-                            <button id="pm-btn-keep-selected" class="pm-btn" type="button">Keep Selected</button>
-                            <button id="pm-btn-restore-all" class="pm-btn" type="button">Restore All</button>
-                        </div>
-                        
-                        <div style="display: flex; gap: 8px; align-items: center; flex: 1; min-width: 280px;">
-                            <label for="pm-range-input" style="font-size: 12px; color: var(--text-muted); white-space: nowrap; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Range:</label>
-                            <input type="text" id="pm-range-input" placeholder="e.g. 1-5, 8, 10-12" style="flex: 1; background: var(--bg-input); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: 9px 14px; color: var(--text-primary); font-size: 13px; font-family: var(--font-mono);">
-                            <button id="pm-btn-apply-range" class="pm-btn pm-btn-primary" type="button">Apply</button>
-                        </div>
-                    </div>
-                    <div id="pm-error-message" style="color: var(--error); font-size: 13px; margin-bottom: 16px; min-height: 20px;"></div>
-                    
-                    <div class="pm-thumbnails-container" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; max-height: 400px; overflow-y: auto;">
-                        <div class="pm-thumbnails-grid" id="pm-thumbnails-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px;">
-                            <!-- Thumbnails injected by JS -->
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: center; margin-top: 32px; gap: 16px;">
-                        <button id="pm-btn-preview" class="generate-btn" type="button" style="background: var(--surface); color: var(--text-primary); border: 1px solid var(--border);">
-                            <span class="btn-text">Apply Changes & Preview</span>
-                        </button>
-                        <button id="pm-btn-continue" class="generate-btn" type="button">
-                            <span class="btn-text">Continue to Download</span>
-                            <span class="btn-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                                </svg>
+
+                        <dl class="export-stats">
+                            <div><dt>Sources</dt><dd id="dl-sources">0</dd></div>
+                            <div><dt>Pages</dt><dd id="dl-pages">0</dd></div>
+                            <div><dt>Size</dt><dd id="dl-size">0 MB</dd></div>
+                        </dl>
+
+                        <label class="field">
+                            <span class="field-label">File name</span>
+                            <span class="input-affix">
+                                <input type="text" id="custom-filename-input" class="input" placeholder="my-notes">
+                                <span class="affix">.pdf</span>
                             </span>
-                        </button>
-                    </div>
-                </div>
-            </div>
+                        </label>
 
-            <!-- PDF Index Modal -->
-            <div class="modal" id="index-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
-                <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; width: 100%; max-width: 560px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <div>
-                            <h3 style="font-size: 20px; font-weight: 700; margin: 0;">Configure PDF Index</h3>
-                            <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Choose how clickable bookmarks should work.</p>
-                        </div>
-                        <div id="close-index-modal" style="cursor: pointer; color: var(--text-muted); font-size: 20px;">&times;</div>
-                    </div>
-                    <div class="index-mode-control" role="group" aria-label="Index mode">
-                        <button id="index-off-btn" class="pm-btn" type="button">Off</button>
-                        <button id="index-automatic-btn" class="pm-btn pm-btn-primary" type="button">Automatic</button>
-                        <button id="index-manual-btn" class="pm-btn" type="button">Manual</button>
-                    </div>
-                    <p id="index-mode-help" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">Keep the existing source bookmarks and headings.</p>
-                    <textarea id="index-entries-input" aria-label="Manual index entries" placeholder="Chapter 1 | 3\nChapter 2 | 12 | 2" style="display: none; width: 100%; min-height: 150px; box-sizing: border-box; resize: vertical; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; color: var(--text-primary); font-family: var(--font-mono); font-size: 13px;"></textarea>
-                    <div id="index-error-message" style="color: var(--error); font-size: 13px; min-height: 20px; margin-top: 10px;"></div>
-                    <button id="index-apply-btn" class="generate-btn" type="button" style="width: 100%; justify-content: center; margin-top: 8px;">Apply Index</button>
-                </div>
-            </div>
+                        <details class="export-options" id="export-options">
+                            <summary><svg class="i"><use href="#i-settings"/></svg>Export options <span class="options-badge" id="export-options-badge" hidden>On</span><svg class="i chevron"><use href="#i-down"/></svg></summary>
+                            <div class="export-options-body">
+                                <label class="switch-row"><span><svg class="i i-sm"><use href="#i-hash"/></svg>Page numbers</span><input type="checkbox" class="switch" id="opt-page-numbers"></label>
+                                <div class="field-row sub-options" id="page-number-options" hidden>
+                                    <label class="field">
+                                        <span class="field-label">Position</span>
+                                        <select id="opt-page-number-position" class="input input-sm">
+                                            <option value="bottom-center">Bottom centre</option>
+                                            <option value="bottom-right">Bottom right</option>
+                                            <option value="top-right">Top right</option>
+                                        </select>
+                                    </label>
+                                    <label class="switch-row switch-row-compact"><span>Skip first page</span><input type="checkbox" class="switch" id="opt-skip-first" checked></label>
+                                </div>
+                                <label class="field">
+                                    <span class="field-label"><svg class="i i-sm"><use href="#i-stamp"/></svg>Watermark</span>
+                                    <input type="text" id="opt-watermark" class="input input-sm" maxlength="60" placeholder="e.g. DRAFT or your name">
+                                </label>
+                                <label class="field">
+                                    <span class="field-label"><svg class="i i-sm"><use href="#i-lock"/></svg>Password</span>
+                                    <input type="password" id="opt-password" class="input input-sm" maxlength="64" placeholder="Leave empty for no password" autocomplete="new-password">
+                                </label>
+                                <button class="btn btn-soft btn-block" id="apply-export-btn" type="button"><span class="btn-text">Apply export options</span></button>
+                                <p class="hint" id="export-status"></p>
+                            </div>
+                        </details>
 
-            <!-- Insert File Modal -->
-            <div class="modal" id="insert-file-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
-                <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; width: 100%; max-width: 500px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                        <h3 style="font-size: 20px; font-weight: 700; margin: 0;">Insert File</h3>
-                        <div id="close-insert-modal" style="cursor: pointer; color: var(--text-muted);">&times;</div>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 20px;">
-                        <div>
-                            <label style="display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px;">1. Select File (PDF or Image)</label>
-                            <div id="insert-file-drop-zone" style="padding: 18px; border: 1px dashed var(--accent); border-radius: var(--radius-sm); text-align: center; color: var(--text-muted); cursor: pointer;">Drop a PDF or image here, or click to browse<input type="file" id="insert-file-input" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp" style="display: none;"></div>
+                        <div class="export-actions">
+                            <a class="btn btn-primary btn-lg btn-block" id="download-btn" href="#" download>
+                                <svg class="i"><use href="#i-download"/></svg>Download PDF
+                            </a>
+                            <div class="export-actions-row">
+                                <button id="save-as-btn" class="btn btn-ghost" type="button"><svg class="i"><use href="#i-save"/></svg>Save as…</button>
+                                <button id="edit-download-btn" class="btn btn-ghost" type="button"><svg class="i"><use href="#i-edit"/></svg>Edit pages</button>
+                            </div>
                         </div>
 
-                        <div>
-                            <label for="insert-url-input" style="display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px;">Or insert a webpage link</label>
-                            <input type="url" id="insert-url-input" placeholder="https://example.com/article" style="width: 100%; box-sizing: border-box; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary);">
-                        </div>
-                        
-                        <div>
-                            <label style="display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px;">2. Insertion Position</label>
-                            <select id="insert-position-select" style="width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary);">
-                                <option value="end">At the End</option>
-                                <option value="start">At the Beginning</option>
-                                <option value="after">After specific page...</option>
-                            </select>
-                        </div>
-                        
-                        <div id="insert-page-number-container" style="display: none;">
-                            <label style="display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px;">Page Number</label>
-                            <input type="number" id="insert-page-number" min="1" placeholder="e.g. 5" style="width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary);">
-                        </div>
-                        
-                        <div id="insert-error-message" style="color: var(--error); font-size: 13px;"></div>
-                        
-                        <button id="btn-confirm-insert" class="generate-btn" type="button" style="width: 100%; margin-top: 8px; justify-content: center;">
-                            <span class="btn-text">Insert File or Link</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
+                        <details class="individual" id="individual-downloads">
+                            <summary>Individual PDFs <span class="muted" id="individual-count"></span><svg class="i chevron"><use href="#i-down"/></svg></summary>
+                            <ul class="individual-list" id="individual-downloads-list"></ul>
+                        </details>
 
-            <!-- Download Section -->
-            <div class="download-section" id="download-section">
-                <div class="download-card" style="padding: 48px 40px; text-align: center;">
-                    <div style="width: 72px; height: 72px; margin: 0 auto 20px; border-radius: 50%; background: linear-gradient(135deg, rgba(124,92,252,0.15), rgba(168,85,247,0.1)); display: flex; align-items: center; justify-content: center;">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9b82ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M20 6L9 17l-5-5"/>
-                        </svg>
-                    </div>
-                    <h3 class="download-title" id="download-title" style="font-size: 24px; font-weight: 800; margin-bottom: 8px;">PDF Ready to Download</h3>
-                    <div id="download-stats" style="display: flex; justify-content: center; gap: 24px; margin-bottom: 24px;">
-                        <div style="text-align: center;">
-                            <div id="dl-sources" style="font-size: 20px; font-weight: 700; color: var(--accent-hover);">5</div>
-                            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Sources</div>
-                        </div>
-                        <div style="width: 1px; background: var(--glass-border);"></div>
-                        <div style="text-align: center;">
-                            <div id="dl-pages" style="font-size: 20px; font-weight: 700; color: var(--accent-hover);">47</div>
-                            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Pages</div>
-                        </div>
-                        <div style="width: 1px; background: var(--glass-border);"></div>
-                        <div style="text-align: center;">
-                            <div id="dl-size" style="font-size: 20px; font-weight: 700; color: var(--accent-hover);">8.4 MB</div>
-                            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Size</div>
-                        </div>
-                    </div>
-                    
-                    <div style="max-width: 400px; margin: 0 auto 24px; text-align: left;">
-                        <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px;">File Name</label>
-                        <div style="display: flex; align-items: center; gap: 0; background: var(--bg-input); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); overflow: hidden;">
-                            <input type="text" id="custom-filename-input" placeholder="Enter custom filename..." style="flex: 1; background: none; border: none; outline: none; padding: 12px 16px; color: var(--text-primary); font-family: var(--font); font-size: 14px;">
-                            <span style="padding: 12px 16px; color: var(--text-muted); font-size: 13px; font-weight: 500; border-left: 1px solid var(--glass-border); background: rgba(255,255,255,0.02);">.pdf</span>
-                        </div>
-                    </div>
-                    
-                    <p class="download-filename" id="download-filename" style="display: none;"></p>
-                    <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 20px;">
-                        <a class="download-btn" id="download-btn" href="#" download style="padding: 14px 36px; border-radius: var(--radius-sm); font-size: 15px;">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                            Download
-                        </a>
-                        <button id="save-as-btn" class="pm-btn pm-btn-primary" type="button" style="padding: 14px 24px; border-radius: var(--radius-sm); font-size: 15px; display: flex; align-items: center; gap: 8px;">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                <polyline points="7 3 7 8 15 8"></polyline>
-                            </svg>
-                            Save As...
-                        </button>
-                        <button id="edit-download-btn" class="pm-btn" type="button" style="padding: 14px 24px; border-radius: var(--radius-sm); font-size: 15px; display: flex; align-items: center; gap: 8px;">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                            Edit & Add More
-                        </button>
-                    </div>
-                    <button class="new-btn" id="new-btn" type="button" style="border-radius: 100px; padding: 10px 24px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19"/>
-                            <line x1="5" y1="12" x2="19" y2="12"/>
-                        </svg>
-                        Start New Collection
-                    </button>
-                    
-                    <div id="individual-downloads" style="margin-top: 32px; border-top: 1px solid var(--glass-border); padding-top: 24px; text-align: left;">
-                        <h4 style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Individual PDFs</h4>
-                        <div class="individual-downloads-list" id="individual-downloads-list">
-                            <!-- Injected via JS -->
-                        </div>
+                        <button class="link-btn new-collection" id="new-btn" type="button"><svg class="i i-sm"><use href="#i-plus"/></svg>Start a new collection</button>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Error Section -->
-            <div class="error-section" id="error-section">
-                <div class="error-card">
-                    <div class="error-icon">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="15" y1="9" x2="9" y2="15"/>
-                            <line x1="9" y1="9" x2="15" y2="15"/>
-                        </svg>
-                    </div>
-                    <h3 class="error-title">Something went wrong</h3>
-                    <p class="error-detail" id="error-detail"></p>
-                    <button class="retry-btn" id="retry-btn" type="button">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="23 4 23 10 17 10"/>
-                            <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
-                        </svg>
-                        Try Again
-                    </button>
+        <!-- ─── How It Works ────────────────────────────────────── -->
+        <section class="section section-alt" id="how-it-works">
+            <div class="section-container">
+                <header class="section-header">
+                    <span class="section-tag">Simple process</span>
+                    <h2 class="section-title">How it works</h2>
+                    <p class="section-desc">Bring your sources together, let Page2PDF prepare them, then shape the final document your way.</p>
+                </header>
+                <div class="steps-grid">
+                    <article class="step-card">
+                        <span class="step-number">01</span>
+                        <span class="step-card-icon"><svg class="i i-lg"><use href="#i-link"/></svg></span>
+                        <h3>Add your sources</h3>
+                        <p>Paste one link or a whole list, upload PDFs and images, or drop them straight onto the workspace.</p>
+                    </article>
+                    <article class="step-card">
+                        <span class="step-number">02</span>
+                        <span class="step-card-icon"><svg class="i i-lg"><use href="#i-layers"/></svg></span>
+                        <h3>Build the document</h3>
+                        <p>Page2PDF extracts the useful content, embeds images, highlights code and merges everything in order.</p>
+                    </article>
+                    <article class="step-card">
+                        <span class="step-number">03</span>
+                        <span class="step-card-icon"><svg class="i i-lg"><use href="#i-download"/></svg></span>
+                        <h3>Edit and export</h3>
+                        <p>Reorder, rotate, duplicate or remove pages, add page numbers, a watermark or a password, then download.</p>
+                    </article>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- ─── How It Works ────────────────────────────────────────── -->
-    <section class="how-it-works" id="how-it-works">
-        <div class="section-container">
-            <div class="section-header">
-                <span class="section-tag">Simple Process</span>
-                <h2 class="section-title">How It Works</h2>
-                <p class="section-desc">Bring your sources together, let Page2PDF prepare them, then shape the final document your way.</p>
-            </div>
-            <div class="steps-grid">
-                <div class="step-card">
-                    <div class="step-number">01</div>
-                    <div class="step-card-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                        </svg>
-                    </div>
-                    <h3>Add your sources</h3>
-                    <p>Paste a public link, upload a PDF or image, or drop files directly into the workspace.</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">02</div>
-                    <div class="step-card-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"/>
-                            <path d="M21 21l-4.35-4.35"/>
-                            <path d="M11 8v6M8 11h6"/>
-                        </svg>
-                    </div>
-                    <h3>Prepare the content</h3>
-                    <p>Page2PDF extracts the useful page content, embeds images, formats code, and builds a clean PDF source.</p>
-                </div>
-                <div class="step-card">
-                    <div class="step-number">03</div>
-                    <div class="step-card-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                    </div>
-                    <h3>Edit and export</h3>
-                    <p>Reorder, remove, rotate, or insert more links, PDFs, and images before downloading the finished document.</p>
+        <!-- ─── Features ────────────────────────────────────────── -->
+        <section class="section" id="features">
+            <div class="section-container">
+                <header class="section-header">
+                    <span class="section-tag">Features</span>
+                    <h2 class="section-title">Built for learning</h2>
+                    <p class="section-desc">Everything you need to save, organise and study online content offline.</p>
+                </header>
+                <div class="features-grid">
+                    <article class="feature-card" style="--tint:#6d5efc"><span class="feature-icon"><svg class="i"><use href="#i-code"/></svg></span><h3>Code blocks</h3><p>Syntax-highlighted code for every language Pygments supports.</p></article>
+                    <article class="feature-card" style="--tint:#a855f7"><span class="feature-icon"><svg class="i"><use href="#i-grid"/></svg></span><h3>Visual page editor</h3><p>Drag to reorder, rotate, duplicate and remove pages — with undo.</p></article>
+                    <article class="feature-card" style="--tint:#ec4899"><span class="feature-icon"><svg class="i"><use href="#i-image"/></svg></span><h3>PDFs &amp; images</h3><p>Merge your own files with web articles in any order you like.</p></article>
+                    <article class="feature-card" style="--tint:#10b981"><span class="feature-icon"><svg class="i"><use href="#i-book"/></svg></span><h3>Clickable contents</h3><p>Automatic or hand-written bookmarks and a linked contents page.</p></article>
+                    <article class="feature-card" style="--tint:#f59e0b"><span class="feature-icon"><svg class="i"><use href="#i-stamp"/></svg></span><h3>Numbers &amp; watermark</h3><p>Stamp page numbers and a subtle watermark on the final export.</p></article>
+                    <article class="feature-card" style="--tint:#06b6d4"><span class="feature-icon"><svg class="i"><use href="#i-shield"/></svg></span><h3>Private &amp; secure</h3><p>SSRF protection, optional AES-256 password, files auto-deleted.</p></article>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- ─── Features ────────────────────────────────────────────── -->
-    <section class="features" id="features">
-        <div class="section-container">
-            <div class="section-header">
-                <span class="section-tag">Features</span>
-                <h2 class="section-title">Built for Learning</h2>
-                <p class="section-desc">Everything you need to save and study online content offline</p>
-            </div>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon" style="--accent: #6366f1;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                    </div>
-                    <h4>Code Blocks</h4>
-                    <p>Syntax-highlighted code with the language support provided by Pygments</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="--accent: #8b5cf6;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                    </div>
-                    <h4>Tables</h4>
-                    <p>Clean, readable tables that fit within page margins</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="--accent: #ec4899;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                    </div>
-                    <h4>Images</h4>
-                    <p>Relevant images embedded directly in the PDF</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="--accent: #10b981;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    </div>
-                    <h4>Table of Contents</h4>
-                    <p>Auto-generated TOC from document headings</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="--accent: #f59e0b;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    </div>
-                    <h4>Secure</h4>
-                    <p>SSRF protection, URL validation, and resource limits</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon" style="--accent: #06b6d4;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-                    </div>
-                    <h4>Study Ready</h4>
-                    <p>Professional formatting perfect for studying and note-taking</p>
+        <!-- ─── About ───────────────────────────────────────────── -->
+        <section class="section section-alt" id="about">
+            <div class="section-container about-content">
+                <span class="section-tag">About</span>
+                <h2 class="section-title">Why Page2PDF?</h2>
+                <p>As students, researchers and developers, we find valuable content scattered across the web. Bookmarks get lost, websites change, and reading on screens isn't always ideal.</p>
+                <p>Page2PDF extracts the meaningful content from any webpage — stripping away ads, navigation and pop-ups — and turns it into a beautifully formatted PDF for offline reading, printing or archiving.</p>
+                <div class="about-stats">
+                    <div class="stat"><span class="stat-value">3</span><span class="stat-label">Extraction strategies</span></div>
+                    <div class="stat"><span class="stat-value">3</span><span class="stat-label">Source types</span></div>
+                    <div class="stat"><span class="stat-value">20</span><span class="stat-label">Sources per collection</span></div>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <!-- ─── About ───────────────────────────────────────────────── -->
-    <section class="about" id="about">
-        <div class="section-container">
-            <div class="about-content">
-                <div class="about-text">
-                    <span class="section-tag">About</span>
-                    <h2 class="section-title">Why Page2PDF?</h2>
-                    <p>
-                        As students, researchers, and developers, we often find valuable content scattered across the web.
-                        Bookmarks get lost, websites change, and reading on screens isn't always ideal.
-                    </p>
-                    <p>
-                        Page2PDF was built to solve this problem. It intelligently extracts the meaningful content from any
-                        webpage — stripping away the noise of ads, navigation, and popups — and converts it into a
-                        beautifully formatted PDF that's perfect for offline reading, printing, or archiving.
-                    </p>
-                    <div class="about-stats">
-                        <div class="stat">
-                            <span class="stat-value">3</span>
-                            <span class="stat-label">Extraction strategies</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">3</span>
-                            <span class="stat-label">Source types</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value">2</span>
-                            <span class="stat-label">Page sizes</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Image Preview Modal -->
-    <div id="image-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); align-items: center; justify-content: center;">
-        <span class="close-modal" id="close-modal" style="position: absolute; top: 20px; right: 40px; color: white; font-size: 40px; font-weight: bold; cursor: pointer; z-index: 1001;">&times;</span>
-        <div style="position: relative; max-width: 90%; max-height: 90vh; display: flex; align-items: center; justify-content: center;">
-            <div id="modal-loader" style="position: absolute; color: white; display: none;">Loading high-res preview...</div>
-            <img class="modal-content" id="modal-img" style="max-width: 100%; max-height: 90vh; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
-        </div>
-    </div>
+        </section>
+    </main>
 
     <!-- ─── Footer ──────────────────────────────────────────────── -->
     <footer class="footer">
         <div class="footer-container">
-            <div class="footer-brand">
-                <span class="footer-logo">Page2PDF</span>
-                <p class="footer-tagline">Turn knowledge into portable documents.</p>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 Page2PDF. Built for learners, by learners.</p>
-            </div>
+            <span class="footer-logo">Page2PDF</span>
+            <p class="footer-tagline">Turn knowledge into portable documents.</p>
+            <p class="footer-copy">&copy; 2026 Page2PDF · Built for learners, by learners.</p>
         </div>
     </footer>
 
-    <script src="/static/js/app.js?v=7"></script>
+    <!-- ─── Modals ──────────────────────────────────────────────── -->
+    <div class="modal" id="index-modal" role="dialog" aria-modal="true" aria-labelledby="index-modal-title" hidden>
+        <div class="modal-card">
+            <header class="modal-head">
+                <div>
+                    <h3 id="index-modal-title">PDF index</h3>
+                    <p>Choose how clickable bookmarks should work.</p>
+                </div>
+                <button class="icon-btn" data-close-modal type="button" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button>
+            </header>
+            <div class="segmented" role="radiogroup" aria-label="Index mode">
+                <button id="index-off-btn" type="button" role="radio">Off</button>
+                <button id="index-automatic-btn" type="button" role="radio">Automatic</button>
+                <button id="index-manual-btn" type="button" role="radio">Manual</button>
+            </div>
+            <p class="hint" id="index-mode-help"></p>
+            <textarea id="index-entries-input" class="input mono" rows="7" aria-label="Manual index entries" placeholder="Introduction | 2&#10;Chapter 1 | 3&#10;Section 1.1 | 5 | 2" hidden></textarea>
+            <p class="form-error" id="index-error-message" role="alert"></p>
+            <button id="index-apply-btn" class="btn btn-primary btn-block" type="button"><span class="btn-text">Apply index</span></button>
+        </div>
+    </div>
+
+    <div class="modal" id="insert-file-modal" role="dialog" aria-modal="true" aria-labelledby="insert-modal-title" hidden>
+        <div class="modal-card">
+            <header class="modal-head">
+                <div>
+                    <h3 id="insert-modal-title">Insert into PDF</h3>
+                    <p>Add a file or a webpage at any position.</p>
+                </div>
+                <button class="icon-btn" data-close-modal type="button" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button>
+            </header>
+            <input type="file" id="insert-file-input" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpg,.jpeg,.webp" hidden>
+            <button class="dropzone dropzone-sm" id="insert-file-drop-zone" type="button">
+                <span class="dropzone-icon"><svg class="i"><use href="#i-upload"/></svg></span>
+                <span class="dropzone-text"><strong id="insert-file-label">Choose a PDF or image</strong><small>or drop it here</small></span>
+            </button>
+            <div class="composer-divider"><span>or</span></div>
+            <label class="field">
+                <span class="field-label">Webpage link</span>
+                <input type="url" id="insert-url-input" class="input" placeholder="https://example.com/article">
+            </label>
+            <div class="field-row">
+                <label class="field">
+                    <span class="field-label">Position</span>
+                    <select id="insert-position-select" class="input">
+                        <option value="end">At the end</option>
+                        <option value="start">At the beginning</option>
+                        <option value="after">After page…</option>
+                    </select>
+                </label>
+                <label class="field" id="insert-page-number-container" hidden>
+                    <span class="field-label">Page number</span>
+                    <input type="number" id="insert-page-number" class="input" min="1" placeholder="5">
+                </label>
+            </div>
+            <p class="form-error" id="insert-error-message" role="alert"></p>
+            <button id="btn-confirm-insert" class="btn btn-primary btn-block" type="button"><span class="btn-text">Insert</span></button>
+        </div>
+    </div>
+
+    <div class="modal" id="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
+        <div class="modal-card modal-card-sm">
+            <h3 id="confirm-title">Are you sure?</h3>
+            <p class="hint" id="confirm-body"></p>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" id="confirm-cancel" type="button">Cancel</button>
+                <button class="btn btn-primary" id="confirm-ok" type="button">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title" hidden>
+        <div class="modal-card modal-card-sm">
+            <header class="modal-head">
+                <h3 id="shortcuts-title">Keyboard shortcuts</h3>
+                <button class="icon-btn" data-close-modal type="button" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button>
+            </header>
+            <dl class="shortcut-list">
+                <div><dt><kbd>Click</kbd></dt><dd>Select a page</dd></div>
+                <div><dt><kbd>Shift</kbd> + <kbd>Click</kbd></dt><dd>Select a range</dd></div>
+                <div><dt><kbd>Ctrl</kbd> + <kbd>A</kbd></dt><dd>Select / deselect all</dd></div>
+                <div><dt><kbd>Delete</kbd></dt><dd>Remove selected (again to restore)</dd></div>
+                <div><dt><kbd>R</kbd></dt><dd>Rotate selected</dd></div>
+                <div><dt><kbd>D</kbd></dt><dd>Duplicate selected</dd></div>
+                <div><dt><kbd>Ctrl</kbd> + <kbd>Z</kbd></dt><dd>Undo</dd></div>
+                <div><dt><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></dt><dd>Redo</dd></div>
+                <div><dt><kbd>Double-click</kbd></dt><dd>Open page preview</dd></div>
+                <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Flip pages in preview</dd></div>
+                <div><dt><kbd>Esc</kbd></dt><dd>Clear selection / close</dd></div>
+            </dl>
+        </div>
+    </div>
+
+    <div class="lightbox" id="image-modal" role="dialog" aria-modal="true" aria-label="Page preview" hidden>
+        <button class="icon-btn lightbox-close" data-close-modal type="button" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button>
+        <button class="icon-btn lightbox-nav lightbox-prev" id="lightbox-prev" type="button" aria-label="Previous page"><svg class="i"><use href="#i-left"/></svg></button>
+        <figure class="lightbox-figure">
+            <div class="lightbox-loader" id="modal-loader"><span class="spinner"></span></div>
+            <img id="modal-img" alt="">
+            <figcaption id="lightbox-caption"></figcaption>
+        </figure>
+        <button class="icon-btn lightbox-nav lightbox-next" id="lightbox-next" type="button" aria-label="Next page"><svg class="i"><use href="#i-right"/></svg></button>
+    </div>
+
+    <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+    <script src="/static/js/app.js?v=10"></script>
 </body>
 </html>

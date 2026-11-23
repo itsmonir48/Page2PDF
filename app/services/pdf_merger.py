@@ -307,7 +307,12 @@ def merge_pdfs(
         return None, 0, 0.0
 
 
-def edit_pdf_pages(input_filename: str, keep_pages: List[int], rotations: Optional[Dict[int, int]] = None) -> Tuple[Optional[str], int, float]:
+def edit_pdf_pages(
+    input_filename: str,
+    keep_pages: List[int],
+    rotations: Optional[Dict[int, int]] = None,
+    rotations_by_position: Optional[List[int]] = None,
+) -> Tuple[Optional[str], int, float]:
     """
     Creates a new PDF containing only the specified pages (0-indexed) in the specified order.
     Applies rotations if provided.
@@ -323,8 +328,15 @@ def edit_pdf_pages(input_filename: str, keep_pages: List[int], rotations: Option
         source_doc = fitz.open(input_path)
         output_doc = fitz.open()
         
-        # Ensure pages are within valid range (but DO NOT sort them, to preserve user ordering)
-        valid_pages = [p for p in keep_pages if 0 <= p < len(source_doc)]
+        # Ensure pages are within valid range (but DO NOT sort them, to preserve user ordering).
+        # Pages may repeat (duplicated in the editor).
+        positional = rotations_by_position if rotations_by_position and len(rotations_by_position) == len(keep_pages) else None
+        valid = [
+            (p, positional[i] if positional else None)
+            for i, p in enumerate(keep_pages)
+            if 0 <= p < len(source_doc)
+        ]
+        valid_pages = [p for p, _ in valid]
         
         if not valid_pages:
              logger.error("No valid pages selected to keep.")
@@ -332,14 +344,17 @@ def edit_pdf_pages(input_filename: str, keep_pages: List[int], rotations: Option
              output_doc.close()
              return None, 0, 0.0
              
-        for new_idx, source_idx in enumerate(valid_pages):
+        for new_idx, (source_idx, position_rotation) in enumerate(valid):
             output_doc.insert_pdf(source_doc, from_page=source_idx, to_page=source_idx)
-            if rotations and str(source_idx) in rotations:
+            extra = 0
+            if position_rotation is not None:
+                extra = position_rotation
+            elif rotations:
+                extra = rotations.get(source_idx, rotations.get(str(source_idx), 0)) or 0
+            if extra % 360:
                 page = output_doc.load_page(new_idx)
-                page.set_rotation(rotations[str(source_idx)])
-            elif rotations and source_idx in rotations:
-                page = output_doc.load_page(new_idx)
-                page.set_rotation(rotations[source_idx])
+                # Add to the page's existing rotation instead of replacing it
+                page.set_rotation((page.rotation + extra) % 360)
             
         # Copy metadata
         output_doc.set_metadata(source_doc.metadata)
@@ -488,3 +503,107 @@ def convert_image_to_pdf(image_path: Path, output_path: Path) -> bool:
         logger.error(f"Error converting image to PDF: {e}", exc_info=True)
         return False
 
+
+
+_PAGE_NUMBER_MARGIN = 22.0
+
+
+def finalize_pdf(
+    input_filename: str,
+    page_numbers: bool = False,
+    page_number_position: str = "bottom-center",
+    skip_first_page: bool = True,
+    watermark: Optional[str] = None,
+    watermark_opacity: float = 0.12,
+    password: Optional[str] = None,
+    title: Optional[str] = None,
+    author: Optional[str] = None,
+) -> Tuple[Optional[str], float]:
+    """
+    Produce the export copy of a PDF: stamps page numbers and a diagonal
+    watermark, sets metadata, and optionally encrypts with AES-256.
+    Returns (filename, size_mb). The source file is left untouched.
+    """
+    try:
+        output_dir = get_output_dir()
+        input_path = output_dir / input_filename
+        if not input_path.exists():
+            logger.error(f"Input PDF not found for finalize: {input_path}")
+            return None, 0.0
+
+        doc = fitz.open(input_path)
+        total = len(doc)
+        watermark = (watermark or "").strip()
+
+        for index, page in enumerate(doc):
+            # Work in the unrotated coordinate space so stamps land where the
+            # reader sees them, whatever the page's /Rotate value is.
+            rect = page.rect
+            derot = page.derotation_matrix
+
+            if watermark:
+                fontsize = max(28.0, min(rect.width, rect.height) / max(len(watermark), 6) * 1.6)
+                fontsize = min(fontsize, 96.0)
+                text_width = fitz.get_text_length(watermark, fontname="helv", fontsize=fontsize)
+                center = fitz.Point(rect.width / 2, rect.height / 2)
+                start = fitz.Point(center.x - text_width / 2, center.y + fontsize / 3)
+                morph = (center * derot, fitz.Matrix(45))
+                page.insert_text(
+                    start * derot,
+                    watermark,
+                    fontname="helv",
+                    fontsize=fontsize,
+                    color=(0.45, 0.45, 0.5),
+                    fill_opacity=watermark_opacity,
+                    stroke_opacity=watermark_opacity,
+                    morph=morph,
+                    rotate=page.rotation,
+                    overlay=True,
+                )
+
+            if page_numbers and not (skip_first_page and index == 0 and total > 1):
+                label = f"{index + 1} / {total}"
+                fontsize = 9.0
+                width = fitz.get_text_length(label, fontname="helv", fontsize=fontsize)
+                if page_number_position == "bottom-right":
+                    point = fitz.Point(rect.width - _PAGE_NUMBER_MARGIN - width, rect.height - _PAGE_NUMBER_MARGIN + 6)
+                elif page_number_position == "top-right":
+                    point = fitz.Point(rect.width - _PAGE_NUMBER_MARGIN - width, _PAGE_NUMBER_MARGIN)
+                else:
+                    point = fitz.Point((rect.width - width) / 2, rect.height - _PAGE_NUMBER_MARGIN + 6)
+                page.insert_text(
+                    point * derot,
+                    label,
+                    fontname="helv",
+                    fontsize=fontsize,
+                    color=(0.4, 0.4, 0.45),
+                    rotate=page.rotation,
+                    overlay=True,
+                )
+
+        metadata = dict(doc.metadata or {})
+        if title:
+            metadata["title"] = title
+        if author:
+            metadata["author"] = author
+        metadata["producer"] = "Page2PDF"
+        doc.set_metadata(metadata)
+
+        export_filename = generate_unique_filename(prefix="export")
+        export_path = output_dir / export_filename
+        save_kwargs = {"garbage": 3, "deflate": True}
+        if password:
+            save_kwargs.update(
+                encryption=fitz.PDF_ENCRYPT_AES_256,
+                user_pw=password,
+                owner_pw=password,
+                permissions=int(fitz.PDF_PERM_ACCESSIBILITY | fitz.PDF_PERM_PRINT | fitz.PDF_PERM_COPY),
+            )
+        doc.save(export_path, **save_kwargs)
+        doc.close()
+
+        size_mb = export_path.stat().st_size / (1024 * 1024)
+        return export_filename, size_mb
+    except Exception as e:
+        logger.error(f"Error finalizing PDF: {e}", exc_info=True)
+        return None, 0.0
